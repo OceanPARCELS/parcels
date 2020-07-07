@@ -30,7 +30,6 @@ if MPI:
 
 __all__ = ['ParticleSet']
 
-
 class ParticleSet(object):
     """Container class for storing particle and executing kernel over them.
 
