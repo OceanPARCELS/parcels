@@ -154,7 +154,9 @@ class ParticleSet(object):
             'lon lat depth precision should be set to either np.float32 or np.float64'
         JITParticle.set_lonlatdepth_dtype(self.lonlatdepth_dtype)
 
-        self._pid_mapping_bounds = {} # plist bracket_index -> (min_id, max_id, size_bracket)
+        # == this should be a list not a dict! == #
+        self._pid_mapping_bounds = [] # plist bracket_index -> (min_id, max_id, size_bracket)
+        # ======================================= #
         self.nlist_limit = 4096
         # self.particles = np.empty(lon.size, dtype=pclass)
         assert lon.shape[0] == lat.shape[0], ('Length of lon and lat do not match.')
@@ -164,8 +166,8 @@ class ParticleSet(object):
         while end_index < lon.shape[0]:
             end_index = min(lon.shape[0], start_index + self.nlist_limit)
             self._plist.append(np.empty(end_index-start_index, dtype=pclass))
+            self._pid_mapping_bounds.append((np.iinfo(np.int32).max, np.iinfo(np.int32).min, end_index-start_index))
             bracket_index = len(self._plist)-1
-            self._pid_mapping_bounds[bracket_index] = (np.iinfo(np.int32).max, np.iinfo(np.int32).min, end_index-start_index)
             start_index = end_index
             # end_index = min(lon.shape[0], end_index+self.nlist_limit)
         # self._particle_data = None
@@ -304,7 +306,7 @@ class ParticleSet(object):
         if not isinstance(property_array, np.ndarray):
             property_array = np.array(property_array)
         nparticles = 0
-        for bracket_index in self._pid_mapping_bounds.keys():
+        for bracket_index in range(len(self._pid_mapping_bounds)):
             nparticles += self._pid_mapping_bounds[bracket_index][2]
         assert property_array.shape[0] == nparticles, ("Attaching the property array to the list of particle prohibited because num. of entries do not match.")
         results = []
@@ -471,7 +473,7 @@ class ParticleSet(object):
     @property
     def size(self):
         nparticles = 0
-        for bracket_index in self._pid_mapping_bounds.keys():
+        for bracket_index in range(len(self._pid_mapping_bounds)):
             nparticles += self._pid_mapping_bounds[bracket_index][2]
         return nparticles
         # return self.particles.size
@@ -510,7 +512,7 @@ class ParticleSet(object):
             offset = len(self._plist)
             self._plist += particles.particles
             # self.pid_mapping_bounds.update(particles.pid_mapping_bounds)
-            for i in particles.pid_mapping_bounds.keys():
+            for i in range(len(particles.pid_mapping_bounds)):
                 self._pid_mapping_bounds[offset+i] = particles.pid_mapping_bounds[i]
         else:
             raise NotImplementedError('Only ParticleSets can be added to a ParticleSet')
@@ -559,7 +561,7 @@ class ParticleSet(object):
                         p._cptr = pdata
                 self._plist.remove(self._plist[src_bracket_index])
                 self._plist_c.remove(self._plist_c[src_bracket_index])
-                self._pid_mapping_bounds.pop(src_bracket_index)
+                self._pid_mapping_bounds.remove(src_bracket_index)
                 nmerges += 1
 
     def remove(self, indices):
