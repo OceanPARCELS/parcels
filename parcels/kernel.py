@@ -356,16 +356,29 @@ class Kernel(object):
                         break
 
     def remove_deleted(self, pset, output_file, endtime):
-        """Utility to remove all particles that signalled deletion"""
-        indices = []
-        for subfield in pset.particles:
-            local_indices = [i for i, p in enumerate(subfield) if p.state in [ErrorCode.Delete]]
-            indices.append(local_indices)
-        # ==== do / fix ParticleFile TODO ==== #
-        # indices = [i for i, p in enumerate(pset.particles) if p.state in [ErrorCode.Delete]]
-        # if len(indices) > 0 and output_file is not None:
-        #     output_file.write(pset[indices], endtime, deleted_only=True)
-        pset.remove(indices)
+            """Utility to remove all particles that signalled deletion"""
+            indices = []
+            dparticles = []
+            for subfield in pset.particles:
+                # del_items = [(i, p) for i, p in enumerate(subfield) if p.state in [ErrorCode.Delete]]     # we could unzip that, but in Python <3.6, more than 255 elem would make it crash
+                local_indices = []
+                local_particles = []
+                for i, p in enumerate(subfield):
+                    if p.state == ErrorCode.Delete:
+                        local_indices.append(i)
+                        local_particles.append(p)
+                indices.append(local_indices)
+                if len(local_particles) > 0:
+                    local_particles = np.array(local_particles)
+                else:
+                    local_particles = None
+                dparticles.append(local_particles)
+            # ==== do / fix ParticleFile TODO ==== #
+            output_file.write(dparticles, endtime, deleted_only=True)    # => individual entries being None -> handled in ParticleFile
+            # indices = [i for i, p in enumerate(pset.particles) if p.state in [ErrorCode.Delete]]
+            # if len(indices) > 0 and output_file is not None:
+            #     output_file.write(pset[indices], endtime, deleted_only=True)
+            pset.remove(indices)
 
     def execute(self, pset, endtime, dt, recovery=None, output_file=None, execute_once=False):
         """Execute this Kernel over a ParticleSet for several timesteps"""
@@ -411,7 +424,6 @@ class Kernel(object):
                 if p.state == ErrorCode.Repeat:
                     p.reset_state()
                 elif p.state == ErrorCode.Delete:
-                    # p.delete()
                     pass
                 elif p.state in recovery_map:
                     recovery_kernel = recovery_map[p.state]
