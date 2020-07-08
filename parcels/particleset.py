@@ -244,47 +244,78 @@ class ParticleSet(object):
     #         self._particle_data = np.empty(nparticles, dtype=self.ptype.dtype)
     #     return nparticles
 
-    def get_cptr_index(self, pdata):
+    def get_list_array_index(self, pdata):
+        """Searches for the list-array indices for a given particle.
+
+        :param pdata: :mod:`int` global index or :mod:`parcels.particle._Particle` (or its subclass) object to search for
+        :return :mod:`tuple` in format (<list index>, <np.ndarray[dtype=Particle] index>), to index
+        """
         if isinstance(pdata, int):
-            # == parameter is the particle ID == #
-            located_particle = [(p, bracket_index, slot_index) for bracket_index, sublist in enumerate(self.plist) for slot_index, p in enumerate(sublist) if p.id == pdata]
-            if len(located_particle) < 1:
-                logger.warn_once("ParticleSet.get_cptr_index() - requested particle ID ({}) not existent.".format(pdata))
-                return -1
-            if len(located_particle) > 1:
-                logger.warn_once("ParticleSet.get_cptr_index() - requested particle ID ({}) ambiguous.".format(pdata))
-                return -1
-            located_particle = located_particle[0]
-            nparticle = 0
-            for i in range(located_particle[1]):
-                nparticle += self.pid_mapping_bounds[i][2]
-            return nparticle+located_particle[2]
+            # == parameter is the global particle index == #
+            bracket_index = 0
+            start_index = 0
+            end_index = self._pid_mapping_bounds[bracket_index][2]
+            while start_index<pdata:
+                bracket_index += 1
+                start_index = end_index
+                end_index = self._pid_mapping_bounds[bracket_index][2]
+            slot_index = pdata-start_index
+            return (bracket_index, slot_index)
         elif isinstance(pdata, self.pclass):
             # == parameter is a particle itself == #
-            nparticle = 0
+            # nparticle = 0
             bracket_index = 0
             bracket_info = self.pid_mapping_bounds[bracket_index]
-            while bracket_index < len(self.plist) and ((pdata.id < bracket_info[0]) or (pdata.id > bracket_info[1])):
-                nparticle += bracket_info[2]
+            while bracket_index < len(self._plist) and ((pdata.id < bracket_info[0]) or (pdata.id > bracket_info[1])):
+            #     nparticle += bracket_info[2]
                 bracket_index += 1
                 bracket_info = self.pid_mapping_bounds[bracket_index]
-            if bracket_index >= len(self.plist):
+            if bracket_index >= len(self._plist):
                 logger.warn_once("ParticleSet.get_cptr_index() - requested particle ({}) not found.".format(pdata))
                 return -1
             slot_index = 0
-            while (slot_index < self.plist[bracket_index].shape[0]) and (self.plist[bracket_index][slot_index].id != pdata.id):
+            while (slot_index < self._plist[bracket_index].shape[0]) and (self._plist[bracket_index][slot_index].id != pdata.id):
                 slot_index += 1
-                nparticle += 1
-            if slot_index >= self.plist[bracket_index].shape[0]:
+            #     nparticle += 1
+            if slot_index >= self._plist[bracket_index].shape[0]:
                 logger.warn_once("ParticleSet.get_cptr_index() - requested particle ({}) not found.".format(pdata))
                 return -1
-            return nparticle
-        elif isinstance(pdata, tuple):
-            # == parameter is a list-array index tuple with n=2 == #
-            nparticle = 0
-            for i in range(len(pdata[0])):
-                nparticle += self.pid_mapping_bounds[i][2]
-            return nparticle+pdata[1]
+            # return nparticle
+            return (bracket_index, slot_index)
+
+    def get_list_array_index_by_PID(self, pdata):
+        # == parameter is the particle ID == #
+        located_particle = [(p, bracket_index, slot_index) for bracket_index, sublist in enumerate(self._plist) for slot_index, p in enumerate(sublist) if p.id == pdata]
+        if len(located_particle) < 1:
+            logger.warn_once("ParticleSet.get_cptr_index() - requested particle ID ({}) not existent.".format(pdata))
+            return -1
+        if len(located_particle) > 1:
+            logger.warn_once("ParticleSet.get_cptr_index() - requested particle ID ({}) ambiguous.".format(pdata))
+            return -1
+        located_particle = located_particle[0]
+        # nparticle = 0
+        # for i in range(located_particle[1]):
+        #     nparticle += self.pid_mapping_bounds[i][2]
+        # return nparticle+located_particle[2]
+        return (located_particle[1], located_particle[2])
+
+    def covert_static_array_to_list_array(self, property_array):
+        if not isinstance(property_array, np.ndarray):
+            property_array = np.array(property_array)
+        nparticles = 0
+        for bracket_index in self._pid_mapping_bounds.keys():
+            nparticles += self._pid_mapping_bounds[bracket_index][2]
+        assert property_array.shape[0] == nparticles, ("Attaching the property array to the list of particle prohibited because num. of entries do not match.")
+        results = []
+        bracket_index = 0
+        start_index = 0
+        end_index = self._pid_mapping_bounds[bracket_index][2]
+        while start_index<property_array.shape[0]:
+            results.append(np.array(property_array[start_index:min(end_index, property_array.shape[0])]))
+            bracket_index += 1
+            start_index = end_index
+            end_index = self._pid_mapping_bounds[bracket_index][2]
+        return results
 
     @classmethod
     def from_list(cls, fieldset, pclass, lon, lat, depth=None, time=None, repeatdt=None, lonlatdepth_dtype=None, **kwargs):
@@ -796,19 +827,31 @@ class ParticleSet(object):
         if isinstance(particle_val, str):
             particle_val = [np.array([getattr(p, particle_val) for p in sublist]) for sublist in self._plist]
         else:
-# =================================================================================================================== #
-            particle_val = particle_val if particle_val else np.ones(len(self.particles))
+            particle_val = particle_val if particle_val else np.ones(self.size)
+            particle_val = self.covert_static_array_to_list_array(particle_val)
         density = np.zeros((field.grid.lat.size, field.grid.lon.size), dtype=np.float32)
+# =================================================================================================================== #
+        for bracket_index, subfield in enumerate(self._plist):
+            for slot_index, p in enumerate(subfield):
+                try:  # breaks if either p.xi, p.yi, p.zi, p.ti do not exist (in scipy) or field not in fieldset
+                    if p.ti[field.igrid] < 0:  # xi, yi, zi, ti, not initialised
+                        raise('error')
+                    xi = p.xi[field.igrid]
+                    yi = p.yi[field.igrid]
+                except:
+                    _, _, _, xi, yi, _ = field.search_indices(p.lon, p.lat, p.depth, 0, 0, search2D=True)
+                density[yi, xi] += particle_val[bracket_index][slot_index]
 
-        for pi, p in enumerate(self.particles):
-            try:  # breaks if either p.xi, p.yi, p.zi, p.ti do not exist (in scipy) or field not in fieldset
-                if p.ti[field.igrid] < 0:  # xi, yi, zi, ti, not initialised
-                    raise('error')
-                xi = p.xi[field.igrid]
-                yi = p.yi[field.igrid]
-            except:
-                _, _, _, xi, yi, _ = field.search_indices(p.lon, p.lat, p.depth, 0, 0, search2D=True)
-            density[yi, xi] += particle_val[pi]
+
+        # for pi, p in enumerate(self.particles):
+        #     try:  # breaks if either p.xi, p.yi, p.zi, p.ti do not exist (in scipy) or field not in fieldset
+        #         if p.ti[field.igrid] < 0:  # xi, yi, zi, ti, not initialised
+        #             raise('error')
+        #         xi = p.xi[field.igrid]
+        #         yi = p.yi[field.igrid]
+        #     except:
+        #         _, _, _, xi, yi, _ = field.search_indices(p.lon, p.lat, p.depth, 0, 0, search2D=True)
+        #     density[yi, xi] += particle_val[pi]
 
         if relative:
             density /= np.sum(particle_val)
