@@ -259,9 +259,9 @@ class ParticleSet(object):
             start_index = 0
             end_index = self._pid_mapping_bounds[bracket_index][2]
             while start_index<pdata:
-                bracket_index += 1
                 start_index = end_index
-                end_index = self._pid_mapping_bounds[bracket_index][2]
+                end_index = start_index+self._pid_mapping_bounds[bracket_index][2]
+                bracket_index += 1
             slot_index = pdata-start_index
             return (bracket_index, slot_index)
         elif isinstance(pdata, self.pclass):
@@ -315,9 +315,9 @@ class ParticleSet(object):
         end_index = self._pid_mapping_bounds[bracket_index][2]
         while start_index<property_array.shape[0]:
             results.append(np.array(property_array[start_index:min(end_index, property_array.shape[0])]))
-            bracket_index += 1
             start_index = end_index
-            end_index = self._pid_mapping_bounds[bracket_index][2]
+            end_index = start_index+self._pid_mapping_bounds[bracket_index][2]
+            bracket_index += 1
         return results
 
     @classmethod
@@ -481,11 +481,20 @@ class ParticleSet(object):
     def __repr__(self):
         return "\n".join([str(p) for sublist in self._plist for p in sublist])
 
-    # def __len__(self):
-    #     return len(self._plist)
-    #     # return self.size
+    def __len__(self):
+        # return len(self._plist)
+        return self.size
 
-    # def __getitem__(self, key):
+    def __getitem__(self, key):
+        bracket_index = 0
+        start_index = 0
+        end_index = self._pid_mapping_bounds[bracket_index][2]
+        while start_index<key:
+            start_index = end_index
+            end_index = start_index+self._pid_mapping_bounds[bracket_index][2]
+            bracket_index += 1
+        slot_index = key - start_index
+        return self._plist[bracket_index][slot_index]
     #     return self.particles[key]
 
     # def __setitem__(self, key, value):
