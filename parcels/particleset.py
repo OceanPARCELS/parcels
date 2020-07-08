@@ -467,13 +467,13 @@ class ParticleSet(object):
                 return np.float64
         return np.float32
 
-    # @property
-    # def size(self):
-    #     nparticles = 0
-    #     for bracket_index in self._pid_mapping_bounds.keys():
-    #         nparticles += self._pid_mapping_bounds[bracket_index][2]
-    #     return nparticles
-    #     # return self.particles.size
+    @property
+    def size(self):
+        nparticles = 0
+        for bracket_index in self._pid_mapping_bounds.keys():
+            nparticles += self._pid_mapping_bounds[bracket_index][2]
+        return nparticles
+        # return self.particles.size
 
     def __repr__(self):
         return "\n".join([str(p) for sublist in self._plist for p in sublist])
