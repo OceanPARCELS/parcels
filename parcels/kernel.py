@@ -367,14 +367,17 @@ class Kernel(object):
                     if p.state == ErrorCode.Delete:
                         local_indices.append(i)
                         local_particles.append(p)
-                indices.append(local_indices)
                 if len(local_particles) > 0:
                     local_particles = np.array(local_particles)
+                    local_indices = np.array(local_indices)
                 else:
                     local_particles = None
+                    local_indices = None
+                indices.append(local_indices)
                 dparticles.append(local_particles)
             # ==== do / fix ParticleFile TODO ==== #
-            output_file.write(dparticles, endtime, deleted_only=True)    # => individual entries being None -> handled in ParticleFile
+            if output_file is not None:
+                output_file.write(dparticles, endtime, deleted_only=True)    # => individual entries being None -> handled in ParticleFile
             # indices = [i for i, p in enumerate(pset.particles) if p.state in [ErrorCode.Delete]]
             # if len(indices) > 0 and output_file is not None:
             #     output_file.write(pset[indices], endtime, deleted_only=True)

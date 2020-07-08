@@ -160,13 +160,14 @@ class ParticleSet(object):
         assert lon.shape[0] == lat.shape[0], ('Length of lon and lat do not match.')
         self._plist = []
         start_index = 0
-        end_index = min(self.nlist_limit , lon.shape[0])
+        end_index = 0 #min(self.nlist_limit , lon.shape[0])
         while end_index < lon.shape[0]:
+            end_index = min(lon.shape[0], start_index + self.nlist_limit)
             self._plist.append(np.empty(end_index-start_index, dtype=pclass))
             bracket_index = len(self._plist)-1
             self._pid_mapping_bounds[bracket_index] = (np.iinfo(np.int32).max, np.iinfo(np.int32).min, end_index-start_index)
             start_index = end_index
-            end_index = min(lon.shape[0], end_index+self.nlist_limit)
+            # end_index = min(lon.shape[0], end_index+self.nlist_limit)
         # self._particle_data = None
         self._plist_c = None
         self._pclass = pclass
@@ -532,7 +533,7 @@ class ParticleSet(object):
     def _merge_brackets_(self):
         lw_bound_nlist = int(self.nlist_limit / 2)
         nmerges = 1
-        while nmerges >= 0:
+        while nmerges > 0:
             nmerges = 0
             trg_bracket = None
             trg_bracket_index = -1
@@ -559,6 +560,7 @@ class ParticleSet(object):
                 self._plist.remove(self._plist[src_bracket_index])
                 self._plist_c.remove(self._plist_c[src_bracket_index])
                 self._pid_mapping_bounds.pop(src_bracket_index)
+                nmerges += 1
 
     def remove(self, indices):
         """Method to remove particles from the ParticleSet, based on their `indices`"""
@@ -566,6 +568,8 @@ class ParticleSet(object):
             len(self._plist), len(indices)))
         for bracket_index in range(len(indices)):
             local_indices = indices[bracket_index]
+            if local_indices is None:
+                continue
             if isinstance(local_indices, collections.Iterable):
                 local_indices = np.array(local_indices)
             self._remove_(bracket_index, local_indices)
@@ -688,7 +692,8 @@ class ParticleSet(object):
         # Derive _starttime and endtime from arguments or fieldset defaults
         if runtime is not None and endtime is not None:
             raise RuntimeError('Only one of (endtime, runtime) can be specified')
-        _starttime = min([p.time for p in self]) if dt >= 0 else max([p.time for p in self])
+        # _starttime = min([p.time for p in self]) if dt >= 0 else max([p.time for p in self])
+        _starttime = min([p.time for sublist in self._plist for p in sublist]) if dt >= 0 else max([p.time for sublist in self._plist for p in sublist])
         if self.repeatdt is not None and self.repeat_starttime is None:
             self.repeat_starttime = _starttime
         if runtime is not None:
@@ -754,6 +759,7 @@ class ParticleSet(object):
             else:
                 time = max(next_prelease, next_input, next_output, next_movie, next_callback, endtime)
             self.kernel.execute(self, endtime=time, dt=dt, recovery=recovery, output_file=output_file, execute_once=execute_once)
+            logger.info("Computed time = {}".format(time))
             if abs(time-next_prelease) < tol:
                 pset_new = ParticleSet(fieldset=self.fieldset, time=time, lon=self.repeatlon,
                                        lat=self.repeatlat, depth=self.repeatdepth,
