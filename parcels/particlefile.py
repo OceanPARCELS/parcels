@@ -260,6 +260,7 @@ class ParticleFile(object):
                         data_dict[var] = np.array([getattr(p, var) for p in pset_towrite])
                     self.maxid_written = np.max([self.maxid_written, np.max(data_dict['id'])])
 
+                # pset_errs = [p for sublist in pset_towrite.particles for p in sublist if p.state != ErrorCode.Delete and abs(time - p.time) > 1e-3]
                 pset_errs = [p for p in pset_towrite if p.state != ErrorCode.Delete and abs(time-p.time) > 1e-3]
                 # pset_errs = [p for sublist in pset_towrite.particles_a for p in sublist if p.state != ErrorCode.Delete and abs(time - p.time) > 1e-3]
                 for p in pset_errs:
@@ -271,6 +272,7 @@ class ParticleFile(object):
 
                 if len(self.var_names_once) > 0:
                     # first_write = [p for p in pset if (p.id not in self.written_once) and _is_particle_started_yet(p, time)]
+                    # first_write = [p for sublist in pset.particles for p in sublist if (p.id not in self.written_once) and _is_particle_started_yet(p, time)]
                     first_write = [p
                                    for sublist in pset
                                    if sublist is not None
