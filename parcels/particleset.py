@@ -258,7 +258,7 @@ class ParticleSet(object):
             bracket_index = 0
             start_index = 0
             end_index = self._pid_mapping_bounds[bracket_index][2]
-            while start_index<pdata:
+            while pdata >= end_index:
                 start_index = end_index
                 end_index = start_index+self._pid_mapping_bounds[bracket_index][2]
                 bracket_index += 1
@@ -313,7 +313,7 @@ class ParticleSet(object):
         bracket_index = 0
         start_index = 0
         end_index = self._pid_mapping_bounds[bracket_index][2]
-        while start_index<property_array.shape[0]:
+        while start_index < property_array.shape[0]:
             results.append(np.array(property_array[start_index:min(end_index, property_array.shape[0])]))
             start_index = end_index
             end_index = start_index+self._pid_mapping_bounds[bracket_index][2]
@@ -489,7 +489,9 @@ class ParticleSet(object):
         bracket_index = 0
         start_index = 0
         end_index = self._pid_mapping_bounds[bracket_index][2]
-        while start_index<key:
+        # while start_index<key:
+        # while end_index >= key:
+        while key >= end_index:
             start_index = end_index
             end_index = start_index+self._pid_mapping_bounds[bracket_index][2]
             bracket_index += 1
@@ -610,15 +612,24 @@ class ParticleSet(object):
             local_indices = np.array(local_indices)
         return_p = self._plist[bracket_index][local_indices]
         self._plist[bracket_index] = np.delete(self._plist[bracket_index], local_indices)
-        local_ids = np.array([p.id for p in self._plist[bracket_index]])
-        self.pid_mapping_bounds[bracket_index] = (np.min(local_ids), np.max(local_ids), local_ids.shape[0])
         if self._ptype.uses_jit:
             self._plist_c[bracket_index] = np.delete(self._plist_c[bracket_index], local_indices)
+        if self._plist[bracket_index] is not None and self._plist[bracket_index].shape[0] > 0:
+            local_ids = np.array([p.id for p in self._plist[bracket_index]])
+            self.pid_mapping_bounds[bracket_index] = (np.min(local_ids), np.max(local_ids), local_ids.shape[0])
+            if self._ptype.uses_jit:
         #     # == Update C-pointer on particles == #
         #     for p, pdata in zip(self._plist[bracket_index], self._plist_c[bracket_index]):
         #         p._cptr = pdata
-            for slot_index in range(len(self._plist[bracket_index])):
-                self._plist[bracket_index][slot_index].update_cptr(self._plist_c[bracket_index][slot_index])
+                for slot_index in range(len(self._plist[bracket_index])):
+                    self._plist[bracket_index][slot_index].update_cptr(self._plist_c[bracket_index][slot_index])
+        else:
+            if len(self._plist) > 1:
+                self._plist.remove(bracket_index)
+                self._plist_c.remove(bracket_index)
+                self._pid_mapping_bounds.remove(bracket_index)
+            else:
+                self.pid_mapping_bounds[bracket_index] = (np.iinfo(np.int32).max, np.iinfo(np.int32).min, 0)
         # return particles
         return return_p
 
