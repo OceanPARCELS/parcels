@@ -233,7 +233,7 @@ class ParticleFile(object):
                 pset = pset.particles_a
 
             # if pset.size == 0:
-            if len(pset) == 0: #  or pset.shape[0] == 0:
+            if len(pset) == 0:
                 logger.warning("ParticleSet is empty on writing as array at time %g" % time)
             else:
                 if deleted_only:
