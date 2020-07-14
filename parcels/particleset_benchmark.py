@@ -51,6 +51,82 @@ def measure_mem_usage():
 USE_ASYNC_MEMLOG = False
 USE_RUSE_SYNC_MEMLOG = False  # can be faulty
 
+class ParticleSet_TimingLog():
+    stime = 0
+    etime = 0
+    mtime = 0
+    samples = []
+    times_steps = []
+    _iter = 0
+
+    def start_timing(self):
+        if MPI:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_rank = mpi_comm.Get_rank()
+            if mpi_rank == 0:
+                # self.stime = MPI.Wtime()
+                # self.stime = time_module.perf_counter()
+                self.stime = time_module.process_time()
+        else:
+            self.stime = time_module.perf_counter()
+
+    def stop_timing(self):
+        if MPI:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_rank = mpi_comm.Get_rank()
+            if mpi_rank == 0:
+                # self.etime = MPI.Wtime()
+                # self.etime = time_module.perf_counter()
+                self.etime = time_module.process_time()
+        else:
+            self.etime = time_module.perf_counter()
+
+    def accumulate_timing(self):
+        if MPI:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_rank = mpi_comm.Get_rank()
+            if mpi_rank == 0:
+                self.mtime += (self.etime-self.stime)
+            else:
+                self.mtime = 0
+        else:
+            self.mtime += (self.etime-self.stime)
+
+    def advance_iteration(self):
+        if MPI:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_rank = mpi_comm.Get_rank()
+            if mpi_rank == 0:
+                self.times_steps.append(self.mtime)
+                self.samples.append(self._iter)
+                self._iter += 1
+            self.mtime = 0
+        else:
+            self.times_steps.append(self.mtime)
+            self.samples.append(self._iter)
+            self._iter += 1
+            self.mtime = 0
+
+
+class ParticleSet_ParamLogging():
+    samples = []
+    params = []
+    _iter = 0
+
+    def advance_iteration(self, param):
+        if MPI:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_rank = mpi_comm.Get_rank()
+            if mpi_rank == 0:
+                self.params.append(param)
+                self.samples.append(self._iter)
+                self._iter += 1
+        else:
+            self.params.append(param)
+            self.samples.append(self._iter)
+            self._iter += 1
+
+
 class ParticleSet_Benchmark(ParticleSet):
 
     def __init__(self, fieldset, pclass=JITParticle, lon=None, lat=None, depth=None, time=None, repeatdt=None,
