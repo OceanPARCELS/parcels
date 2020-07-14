@@ -219,8 +219,8 @@ class Kernel(object):
 
     def execute_jit(self, pset, endtime, dt):
         """Invokes JIT engine to perform the core update loop"""
-        if len(pset.particles) > 0 and pset.particles[0].shape[0]:
-            assert pset.fieldset.gridset.size == len(pset.particles[0][0].xi), \
+        if len(pset.particles_a) > 0 and pset.particles_a[0].shape[0]:
+            assert pset.fieldset.gridset.size == len(pset.particles_a[0][0].xi), \
                 'FieldSet has different amount of grids than Particle.xi. Have you added Fields after creating the ParticleSet?'
 
         # if len(pset.particles) > 0:
@@ -280,7 +280,7 @@ class Kernel(object):
             f.data = np.array(f.data)
 
         # for p in pset.particles:
-        for subfield in pset.particles:
+        for subfield in pset.particles_a:
             for p in subfield:
                 ptype = p.getPType()
                 # Don't execute particles that aren't started yet
@@ -359,7 +359,7 @@ class Kernel(object):
             """Utility to remove all particles that signalled deletion"""
             indices = []
             dparticles = []
-            for subfield in pset.particles:
+            for subfield in pset.particles_a:
                 # del_items = [(i, p) for i, p in enumerate(subfield) if p.state in [ErrorCode.Delete]]     # we could unzip that, but in Python <3.6, more than 255 elem would make it crash
                 local_indices = []
                 local_particles = []
@@ -385,7 +385,7 @@ class Kernel(object):
 
     def execute(self, pset, endtime, dt, recovery=None, output_file=None, execute_once=False):
         """Execute this Kernel over a ParticleSet for several timesteps"""
-        for subfield in pset.particles:
+        for subfield in pset.particles_a:
             for p in subfield:
                 p.reset_state()
 
@@ -417,7 +417,7 @@ class Kernel(object):
 
         # == Identify particles that threw errors == #
         # error_particles = [p for p in pset.particles if p.state not in [ErrorCode.Success, ErrorCode.Evaluate]]
-        error_particles = [p for subfield in pset.particles for p in subfield if p.state not in [ErrorCode.Success, ErrorCode.Evaluate]]
+        error_particles = [p for subfield in pset.particles_a for p in subfield if p.state not in [ErrorCode.Success, ErrorCode.Evaluate]]
 
         while len(error_particles) > 0:
             # Apply recovery kernel
@@ -449,7 +449,7 @@ class Kernel(object):
                 self.execute_python(pset, endtime, dt)
 
             # error_particles = [p for p in pset.particles if p.state not in [ErrorCode.Success, ErrorCode.Evaluate]]
-            error_particles = [p for subfield in pset.particles for p in subfield if p.state not in [ErrorCode.Success, ErrorCode.Evaluate]]
+            error_particles = [p for subfield in pset.particles_a for p in subfield if p.state not in [ErrorCode.Success, ErrorCode.Evaluate]]
 
     def merge(self, kernel):
         funcname = self.funcname + kernel.funcname

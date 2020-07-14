@@ -229,12 +229,19 @@ class ParticleFile(object):
 
         if self.lasttime_written != time and \
            (self.write_ondelete is False or deleted_only is True):
+            if not isinstance(pset, list):
+                pset = pset.particles_a
+
             # if pset.size == 0:
-            if len(pset.particles) == 0 or pset.particles.shape[0] == 0:
+            if len(pset) == 0: #  or pset.shape[0] == 0:
                 logger.warning("ParticleSet is empty on writing as array at time %g" % time)
             else:
                 if deleted_only:
-                    pset_towrite = pset
+                    pset_towrite = [p
+                                    for sublist in pset
+                                    if sublist is not None
+                                    for p in sublist]
+                    # pset_towrite = pset
                 # == commented due to git rebase to master 27 02 2020 == #
                 # elif pset[0].dt > 0:
                 #     pset_towrite = [p for p in pset if time - p.dt/2 <= p.time < time + p.dt and np.isfinite(p.id)]
@@ -243,7 +250,7 @@ class ParticleFile(object):
                 else:
                     # pset_towrite = [p for p in pset if time - np.abs(p.dt/2) <= p.time < time + np.abs(p.dt) and np.isfinite(p.id)]
                     pset_towrite = [p
-                                    for sublist in pset.particles
+                                    for sublist in pset
                                     if sublist is not None
                                     for p in sublist
                                     if time - np.abs(p.dt / 2) <= p.time < time + np.abs(p.dt) and np.isfinite(p.id)]
@@ -252,8 +259,8 @@ class ParticleFile(object):
                         data_dict[var] = np.array([getattr(p, var) for p in pset_towrite])
                     self.maxid_written = np.max([self.maxid_written, np.max(data_dict['id'])])
 
-                # pset_errs = [p for p in pset_towrite if p.state != ErrorCode.Delete and abs(time-p.time) > 1e-3]
-                pset_errs = [p for sublist in pset_towrite.particles for p in sublist if p.state != ErrorCode.Delete and abs(time - p.time) > 1e-3]
+                pset_errs = [p for p in pset_towrite if p.state != ErrorCode.Delete and abs(time-p.time) > 1e-3]
+                # pset_errs = [p for sublist in pset_towrite.particles_a for p in sublist if p.state != ErrorCode.Delete and abs(time - p.time) > 1e-3]
                 for p in pset_errs:
                     logger.warning_once(
                         'time argument in pfile.write() is %g, but a particle has time % g.' % (time, p.time))
@@ -264,7 +271,7 @@ class ParticleFile(object):
                 if len(self.var_names_once) > 0:
                     # first_write = [p for p in pset if (p.id not in self.written_once) and _is_particle_started_yet(p, time)]
                     first_write = [p
-                                   for sublist in pset.particles
+                                   for sublist in pset
                                    if sublist is not None
                                    for p in sublist
                                    if (p.id not in self.written_once) and _is_particle_started_yet(p, time)]
@@ -291,7 +298,8 @@ class ParticleFile(object):
             self.file_list.append(tmpfilename)
 
         if len(data_dict_once) > 0:
-            tmpfilename = os.path.join(self.tempwritedir, str(len(self.file_list)) + '_once.npy')
+            # tmpfilename = os.path.join(self.tempwritedir, str(len(self.file_list)) + '_once.npy')
+            tmpfilename = os.path.join(self.tempwritedir, str(len(self.file_list_once)) + '_once.npy')
             with open(tmpfilename, 'wb') as f:
                 np.save(f, data_dict_once)
             self.file_list_once.append(tmpfilename)
