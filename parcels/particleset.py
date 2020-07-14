@@ -16,7 +16,6 @@ from parcels.kernel import Kernel
 from parcels.kernels.advection import AdvectionRK4
 from parcels.particle import JITParticle
 from parcels.particlefile import ParticleFile
-from parcels.tools.error import ErrorCode
 from parcels.tools.loggers import logger
 try:
     from mpi4py import MPI
@@ -30,6 +29,7 @@ if MPI:
                                'See http://oceanparcels.org/#parallel_install for more information')
 
 __all__ = ['ParticleSet']
+
 
 class ParticleSet(object):
     """Container class for storing particle and executing kernel over them.
@@ -155,14 +155,14 @@ class ParticleSet(object):
         JITParticle.set_lonlatdepth_dtype(self.lonlatdepth_dtype)
 
         # == this should be a list not a dict! == #
-        self._pid_mapping_bounds = [] # plist bracket_index -> (min_id, max_id, size_bracket)
+        self._pid_mapping_bounds = []  # plist bracket_index -> (min_id, max_id, size_bracket)
         # ======================================= #
         self.nlist_limit = 4096
         # self.particles = np.empty(lon.size, dtype=pclass)
         assert lon.shape[0] == lat.shape[0], ('Length of lon and lat do not match.')
         self._plist = []
         start_index = 0
-        end_index = 0 #min(self.nlist_limit , lon.shape[0])
+        end_index = 0
         while end_index < lon.shape[0]:
             end_index = min(lon.shape[0], start_index + self.nlist_limit)
             self._plist.append(np.empty(end_index-start_index, dtype=pclass))
@@ -189,7 +189,7 @@ class ParticleSet(object):
 
         if lon is not None and lat is not None:
             # == Initialise from arrays of lon/lat coordinates == #
-        #     assert self.particles.size == lon.size and self.particles.size == lat.size, ('Size of ParticleSet does not match length of lon and lat.')
+            # assert self.particles.size == lon.size and self.particles.size == lat.size, ('Size of ParticleSet does not match length of lon and lat.')
 
             for i in range(lon.size):
                 bracket_index = int(float(i)/self.nlist_limit)
@@ -197,7 +197,7 @@ class ParticleSet(object):
                 self._plist[bracket_index][slot_index] = pclass(lon[i], lat[i], pid[i], fieldset=fieldset, depth=depth[i], cptr=self.cptr(bracket_index, slot_index), time=time[i])
                 bracket_info = self._pid_mapping_bounds[bracket_index]
                 self._pid_mapping_bounds[bracket_index] = (min(pid[i], bracket_info[0]), max(pid[i], bracket_info[1]), bracket_info[2])
-        #         self.particles[i] = pclass(lon[i], lat[i], pid[i], fieldset=fieldset, depth=depth[i], cptr=cptr(i), time=time[i])
+                # self.particles[i] = pclass(lon[i], lat[i], pid[i], fieldset=fieldset, depth=depth[i], cptr=cptr(i), time=time[i])
                 # == Set other Variables if provided == #
                 for kwvar in kwargs:
                     if not hasattr(self._plist[bracket_index][slot_index], kwvar):
@@ -277,11 +277,9 @@ class ParticleSet(object):
             return (bracket_index, slot_index)
         elif isinstance(pdata, self.pclass):
             # == parameter is a particle itself == #
-            # nparticle = 0
             bracket_index = 0
             bracket_info = self.pid_mapping_bounds[bracket_index]
             while bracket_index < len(self._plist) and ((pdata.id < bracket_info[0]) or (pdata.id > bracket_info[1])):
-            #     nparticle += bracket_info[2]
                 bracket_index += 1
                 bracket_info = self.pid_mapping_bounds[bracket_index]
             if bracket_index >= len(self._plist):
@@ -290,11 +288,9 @@ class ParticleSet(object):
             slot_index = 0
             while (slot_index < self._plist[bracket_index].shape[0]) and (self._plist[bracket_index][slot_index].id != pdata.id):
                 slot_index += 1
-            #     nparticle += 1
             if slot_index >= self._plist[bracket_index].shape[0]:
                 logger.warn_once("ParticleSet.get_cptr_index() - requested particle ({}) not found.".format(pdata))
                 return -1
-            # return nparticle
             return (bracket_index, slot_index)
 
     def get_list_array_index_by_PID(self, pdata):
@@ -717,9 +713,11 @@ class ParticleSet(object):
             local_ids = np.array([p.id for p in self._plist[bracket_index]])
             self.pid_mapping_bounds[bracket_index] = (np.min(local_ids), np.max(local_ids), local_ids.shape[0])
             if self._ptype.uses_jit:
-        #     # == Update C-pointer on particles == #
-        #     for p, pdata in zip(self._plist[bracket_index], self._plist_c[bracket_index]):
-        #         p._cptr = pdata
+                # == Update C-pointer on particles == #
+                # -- OLD -- #
+                # for p, pdata in zip(self._plist[bracket_index], self._plist_c[bracket_index]):
+                #    p._cptr = pdata
+                # -- END -- #
                 for slot_index in range(len(self._plist[bracket_index])):
                     self._plist[bracket_index][slot_index].update_cptr(self._plist_c[bracket_index][slot_index])
         else:
@@ -969,7 +967,6 @@ class ParticleSet(object):
                 except:
                     _, _, _, xi, yi, _ = field.search_indices(p.lon, p.lat, p.depth, 0, 0, search2D=True)
                 density[yi, xi] += particle_val[bracket_index][slot_index]
-
 
         # for pi, p in enumerate(self.particles):
         #     try:  # breaks if either p.xi, p.yi, p.zi, p.ti do not exist (in scipy) or field not in fieldset
