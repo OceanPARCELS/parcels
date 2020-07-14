@@ -260,5 +260,5 @@ class JITParticle(ScipyParticle):
             setattr(self, 'c'+index, getattr(self, index+'p').value)
 
     def update_cptr(self, new_ptr):
-        np.copyto(new_ptr, self._cptr)
+        # np.copyto(new_ptr, self._cptr)
         self._cptr = new_ptr
