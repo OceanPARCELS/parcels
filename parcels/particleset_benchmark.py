@@ -55,9 +55,34 @@ class ParticleSet_TimingLog():
     stime = 0
     etime = 0
     mtime = 0
-    samples = []
-    times_steps = []
+    _samples = []
+    _times_steps = []
     _iter = 0
+
+    def __init__(self):
+        self.stime = 0
+        self.etime = 0
+        self.mtime = 0
+        self._samples = []
+        self._times_steps = []
+        self._iter = 0
+
+    @property
+    def timing(self):
+        return self._times_steps
+
+    @property
+    def samples(self):
+        return self._samples
+
+    def __len__(self):
+        return len(self._samples)
+
+    def get_values(self):
+        return self._times_steps
+
+    def get_value(self, index):
+        return self._times_steps[index]
 
     def start_timing(self):
         if MPI:
@@ -97,33 +122,55 @@ class ParticleSet_TimingLog():
             mpi_comm = MPI.COMM_WORLD
             mpi_rank = mpi_comm.Get_rank()
             if mpi_rank == 0:
-                self.times_steps.append(self.mtime)
-                self.samples.append(self._iter)
+                self._times_steps.append(self.mtime)
+                self._samples.append(self._iter)
                 self._iter += 1
             self.mtime = 0
         else:
-            self.times_steps.append(self.mtime)
-            self.samples.append(self._iter)
+            self._times_steps.append(self.mtime)
+            self._samples.append(self._iter)
             self._iter += 1
             self.mtime = 0
 
 
 class ParticleSet_ParamLogging():
-    samples = []
-    params = []
+    _samples = []
+    _params = []
     _iter = 0
+
+    def __init__(self):
+        self._samples = []
+        self._params = []
+        self._iter = 0
+
+    @property
+    def samples(self):
+        return self._samples
+
+    @property
+    def params(self):
+        return self._params
+
+    def get_params(self):
+        return self._params
+
+    def get_param(self, index):
+        return self._params[index]
+
+    def __len__(self):
+        return len(self._samples)
 
     def advance_iteration(self, param):
         if MPI:
             mpi_comm = MPI.COMM_WORLD
             mpi_rank = mpi_comm.Get_rank()
             if mpi_rank == 0:
-                self.params.append(param)
-                self.samples.append(self._iter)
+                self._params.append(param)
+                self._samples.append(self._iter)
                 self._iter += 1
         else:
-            self.params.append(param)
-            self.samples.append(self._iter)
+            self._params.append(param)
+            self._samples.append(self._iter)
             self._iter += 1
 
 
