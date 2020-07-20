@@ -411,8 +411,11 @@ if __name__=='__main__':
         mpi_comm = MPI.COMM_WORLD
         mpi_rank = mpi_comm.Get_rank()
         if mpi_rank==0:
+            # endtime = ostime.time()
+            # endtime = MPI.Wtime()
             endtime = ostime.process_time()
     else:
+        #endtime = ostime.time()
         endtime = ostime.process_time()
 
     # if MPI:

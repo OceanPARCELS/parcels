@@ -521,7 +521,9 @@ def test_sampling_multiple_grid_sizes(mode, ugridfactor):
         assert fieldset.U.grid is fieldset.V.grid
     pset.execute(AdvectionRK4, runtime=10, dt=1)
     assert np.isclose(pset[0].lon, 0.8)
-    assert np.all((pset[0].xi >= 0) & (pset[0].xi < xdim*ugridfactor))
+    if mode == 'jit':
+        # assert np.all((pset[0].xi >= 0) & (pset[0].xi < xdim*ugridfactor))
+        assert np.all(np.array([[p.xi[i] >= 0 & p.xi[i] < xdim*ugridfactor for i in range(0, len(p.xi))] for p in pset]))
 
 
 def test_multiple_grid_addlater_error():
