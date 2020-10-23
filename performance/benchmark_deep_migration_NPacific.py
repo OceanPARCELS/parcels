@@ -189,7 +189,7 @@ def DeleteParticle(particle, fieldset, time):
 def perIterGC():
     gc.collect()
 
-def getclosest_ij(lats,lons,latpt,lonpt):     
+def getclosest_ij(lats,lons,latpt,lonpt):
     """Function to find the index of the closest point to a certain lon/lat value."""
     dist_sq = (lats-latpt)**2 + (lons-lonpt)**2                 # find squared distance of every point on grid
     minindex_flattened = dist_sq.argmin()                       # 1D index of minimum dist_sq element
@@ -436,7 +436,6 @@ if __name__ == "__main__":
 
     if MPI:
         mpi_comm = MPI.COMM_WORLD
-        # mpi_comm.Barrier()
         Nparticles = mpi_comm.reduce(np.array(pset.nparticle_log.get_params()), op=MPI.SUM, root=0)
         Nmem = mpi_comm.reduce(np.array(pset.mem_log.get_params()), op=MPI.SUM, root=0)
         if mpi_comm.Get_rank() == 0:

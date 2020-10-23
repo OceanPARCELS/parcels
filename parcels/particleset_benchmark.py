@@ -302,14 +302,6 @@ class ParticleSet_Benchmark(ParticleSet):
             self.total_log.stop_timing()
             self.total_log.accumulate_timing()
             mem_B_used_total = 0
-            # if MPI:
-            #     mpi_comm = MPI.COMM_WORLD
-            #     mem_B_used = self.process.memory_info().rss
-            #     mem_B_used_total = mpi_comm.reduce(mem_B_used, op=MPI.SUM, root=0)
-            # else:
-            #     mem_B_used_total = self.process.memory_info().rss
-            # mem_B_used_total = self.process.memory_info().rss
-            mem_B_used_total = 0
             if USE_RUSE_SYNC_MEMLOG:
                 mem_B_used_total = measure_mem_usage()
             else:
