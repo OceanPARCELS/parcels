@@ -6,8 +6,8 @@ Date: 11-02-2020
 from parcels import AdvectionEE, AdvectionRK45, AdvectionRK4
 from parcels import FieldSet, ScipyParticle, JITParticle, Variable, AdvectionRK4, ErrorCode
 from parcels.particleset_benchmark import ParticleSet_Benchmark as ParticleSet
-# from parcels.kernel_benchmark import Kernel_Benchmark as Kernel
 from parcels.field import VectorField, NestedField, SummedField
+# from parcels.kernel_benchmark import Kernel_Benchmark as Kernel
 # from parcels import plotTrajectoriesFile_loadedField
 from datetime import timedelta as delta
 import math
@@ -383,11 +383,8 @@ if __name__=='__main__':
         mpi_comm = MPI.COMM_WORLD
         mpi_rank = mpi_comm.Get_rank()
         if mpi_rank==0:
-            # starttime = ostime.time()
-            # starttime = MPI.Wtime()
             starttime = ostime.process_time()
     else:
-        # starttime = ostime.time()
         starttime = ostime.process_time()
     kernels = pset.Kernel(AdvectionRK4,delete_cfiles=True)
     if agingParticles:
@@ -411,11 +408,8 @@ if __name__=='__main__':
         mpi_comm = MPI.COMM_WORLD
         mpi_rank = mpi_comm.Get_rank()
         if mpi_rank==0:
-            # endtime = ostime.time()
-            # endtime = MPI.Wtime()
             endtime = ostime.process_time()
     else:
-        #endtime = ostime.time()
         endtime = ostime.process_time()
 
     if MPI:
@@ -451,7 +445,6 @@ if __name__=='__main__':
 
     if MPI:
         mpi_comm = MPI.COMM_WORLD
-        # mpi_comm.Barrier()
         Nparticles = mpi_comm.reduce(np.array(pset.nparticle_log.get_params()), op=MPI.SUM, root=0)
         Nmem = mpi_comm.reduce(np.array(pset.mem_log.get_params()), op=MPI.SUM, root=0)
         if mpi_comm.Get_rank() == 0:
