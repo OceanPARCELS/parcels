@@ -240,7 +240,8 @@ class ParticleFile(object):
                     pset_towrite = [p
                                     for sublist in pset
                                     if sublist is not None
-                                    for p in sublist]
+                                    for p in sublist
+                                    if p.state == ErrorCode.Delete]
                     # pset_towrite = pset
                 # == commented due to git rebase to master 27 02 2020 == #
                 # elif pset[0].dt > 0:
