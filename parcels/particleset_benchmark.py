@@ -317,7 +317,6 @@ class ParticleSet_Benchmark(ParticleSet):
             #     mem_B_used_total = mpi_comm.reduce(mem_B_used, op=MPI.SUM, root=0)
             # else:
             #     mem_B_used_total = self.process.memory_info().rss
-            # mem_B_used_total = self.process.memory_info().rss
             if USE_RUSE_SYNC_MEMLOG:
                 mem_B_used_total = measure_mem_usage()
             else:
