@@ -6,6 +6,10 @@ try:
 except:
     MPI = None
 
+from threading import Thread
+from threading import Event
+from time import sleep
+
 class TimingLog():
     stime = 0
     etime = 0
@@ -103,13 +107,12 @@ class TimingLog():
             self.mtime += value
 
     def sum(self):
+        result = 0
         if MPI:
             mpi_comm = MPI.COMM_WORLD
             mpi_rank = mpi_comm.Get_rank()
             if mpi_rank == 0:
                 result = np.array(self._times_steps).sum()
-            else:
-                result = 0
         else:
             result = np.array(self._times_steps).sum()
         return result
@@ -174,3 +177,145 @@ class ParamLogging():
             self._params.append(param)
             self._samples.append(self._iter)
             self._iter += 1
+
+class Asynchronous_ParamLogging():
+    _samples = []
+    _params = []
+    _iter = 0
+    _measure_func = None
+    _measure_start_value = None  # for differential measurements
+    _measure_partial_values = []
+    _measure_interval = 0.25  # 250 ms
+    _event = None
+    _thread = None
+    differential_measurement = False
+
+    def __init__(self):
+        self._samples = []
+        self._params = []
+        self._measure_partial_values = []
+        self._iter = 0
+        self._measure_func = None
+        self._measure_start_value = None
+        self._measure_interval = 0.25  # 250 ms
+        self._event = None
+        self._thread = None
+        self.differential_measurement = False
+
+    def __del__(self):
+        del self._samples[:]
+        del self._params[:]
+        del self._measure_partial_values[:]
+
+    @property
+    def samples(self):
+        return self._samples
+
+    @property
+    def params(self):
+        return self._params
+
+    @property
+    def measure_func(self):
+        return self._measure_func
+
+    @measure_func.setter
+    def measure_func(self, function):
+        self._measure_func = function
+
+    @property
+    def measure_interval(self):
+        return self._measure_interval
+
+    @measure_interval.setter
+    def measure_interval(self, interval):
+        """
+        Set measure interval in seconds
+        :param interval: interval in seconds (fractional possible)
+        :return: None
+        """
+        self._measure_interval = interval
+
+    @property
+    def measure_start_value(self):
+        return self._measure_start_value
+
+    @measure_start_value.setter
+    def measure_start_value(self, value):
+        self._measure_start_value = value
+
+    def async_run(self):
+        if self.differential_measurement:
+            self.async_run_diff_measurement()
+        else:
+            pass
+
+    def async_run_diff_measurement(self):
+        if self._measure_start_value is None:
+            self._measure_start_value = self._measure_func()
+            self._measure_partial_values.append(0)
+        while not self._event.is_set():
+            self._measure_partial_values.append( self._measure_func()-self._measure_start_value )
+            sleep(self._measure_interval)
+
+    def async_run_measurement(self):
+        while not self._event.is_set():
+            self._measure_partial_values.append( self.measure_func() )
+            sleep(self.measure_interval)
+
+    def start_partial_measurement(self):
+        assert self._measure_func is not None, "Measurement function is None - invalid. Exiting ..."
+        assert self._thread is None, "Measurement already running - double-start invalid. Exiting ..."
+        if len(self._measure_partial_values) > 0:
+            del self._measure_partial_values[:]
+            self._measure_partial_values = []
+        self._event = Event()
+        self._thread = Thread(target=self.async_run_measurement)
+        self._thread.start()
+
+    def stop_partial_measurement(self):
+        """
+        function to stop the measurement. The function also internally advances the iteration with the mean (or max)
+        of the measured partial values.
+        :return: None
+        """
+        self._event.set()
+        self._thread.join()
+        sleep(self._measure_interval)
+        del self._thread
+        self._thread = None
+        self._measure_start_value = None
+        # param_partial_mean = np.array(self._measure_partial_values).mean()
+        param_partial_mean = np.array(self._measure_partial_values).max()
+        self.advance_iteration(param_partial_mean)
+
+    def get_params(self):
+        return self._params
+
+    def get_param(self, index):
+        N = len(self._params)
+        result = 0
+        if N > 0:
+            result = self._params[min(max(index, 0), N-1)]
+        return result
+
+    def __len__(self):
+        return len(self._samples)
+
+    def advance_iteration(self, param):
+        if MPI:
+            # mpi_comm = MPI.COMM_WORLD
+            # mpi_rank = mpi_comm.Get_rank()
+
+            self._params.append(param)
+            self._samples.append(self._iter)
+            self._iter += 1
+            # if mpi_rank == 0:
+            #     self._params.append(param)
+            #     self._samples.append(self._iter)
+            #     self._iter += 1
+        else:
+            self._params.append(param)
+            self._samples.append(self._iter)
+            self._iter += 1
+
