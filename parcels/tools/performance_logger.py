@@ -107,13 +107,12 @@ class TimingLog():
             self.mtime += value
 
     def sum(self):
+        result = 0
         if MPI:
             mpi_comm = MPI.COMM_WORLD
             mpi_rank = mpi_comm.Get_rank()
             if mpi_rank == 0:
                 result = np.array(self._times_steps).sum()
-            else:
-                result = 0
         else:
             result = np.array(self._times_steps).sum()
         return result

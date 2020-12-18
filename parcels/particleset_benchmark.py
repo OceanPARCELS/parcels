@@ -288,6 +288,7 @@ class ParticleSet_Benchmark(ParticleSet):
                 next_movie += moviedt * np.sign(dt)
             # ==== insert post-process here to also allow for memory clean-up via external func ==== #
             if abs(time-next_callback) < tol:
+                # ==== assuming post-processing functions largely use memory than hard computation ... ==== #
                 self.mem_io_log.start_timing()
                 if postIterationCallbacks is not None:
                     for extFunc in postIterationCallbacks:
@@ -358,7 +359,7 @@ class ParticleSet_Benchmark(ParticleSet):
         :param delete_cfiles: Boolean whether to delete the C-files after compilation in JIT mode (default is True)
         """
         return Kernel_Benchmark(self.fieldset, self.ptype, pyfunc=pyfunc, c_include=c_include,
-                      delete_cfiles=delete_cfiles)
+                                delete_cfiles=delete_cfiles)
 
     def plot_and_log(self, total_times = None, compute_times = None, io_times = None, plot_times = None, memory_used = None, nparticles = None, target_N = 1, imageFilePath = "", odir = os.getcwd(), xlim_range=None, ylim_range=None):
         # == do something with the log-arrays == #
@@ -405,8 +406,9 @@ class ParticleSet_Benchmark(ParticleSet):
         plot_drawt = (plot_times * t_scaler).tolist()
         plot_npart = (nparticles * npart_scaler).tolist()
         plot_mem = []
-        if memory_used is not None and len(memory_used)>1:
+        if memory_used is not None and len(memory_used) > 1:
             plot_mem = (memory_used * mem_scaler).tolist()
+
         plot_mem_async = None
         if USE_ASYNC_MEMLOG:
             plot_mem_async = (memory_used_async * mem_scaler).tolist()
@@ -470,7 +472,7 @@ class ParticleSet_Benchmark(ParticleSet):
             ncores = 1
             if MPI:
                 mpi_comm = MPI.COMM_WORLD
-                ncores =  mpi_comm.Get_size()
+                ncores = mpi_comm.Get_size()
             header_string = "target_N, start_N, final_N, avg_N, ncores, avg_kt_total[s], avg_kt_compute[s], avg_kt_io[s], avg_kt_plot[s], cum_t_total[s], cum_t_compute[s], com_t_io[s], cum_t_plot[s], max_mem[MB]\n"
             f.write(header_string)
             data_string = "{}, {}, {}, {}, {}, ".format(target_N, nparticles_t0, nparticles_tN, nparticles.mean(), ncores)
