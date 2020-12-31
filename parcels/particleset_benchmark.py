@@ -48,7 +48,7 @@ def measure_mem_usage():
         return rsc.ru_maxrss*1024
     return rsc.ru_maxrss
 
-USE_ASYNC_MEMLOG = True
+USE_ASYNC_MEMLOG = False
 USE_RUSE_SYNC_MEMLOG = False  # can be faulty
 
 class ParticleSet_Benchmark(ParticleSet):
@@ -317,7 +317,6 @@ class ParticleSet_Benchmark(ParticleSet):
             #     mem_B_used_total = mpi_comm.reduce(mem_B_used, op=MPI.SUM, root=0)
             # else:
             #     mem_B_used_total = self.process.memory_info().rss
-            mem_B_used_total = 0
             if USE_RUSE_SYNC_MEMLOG:
                 mem_B_used_total = measure_mem_usage()
             else:
