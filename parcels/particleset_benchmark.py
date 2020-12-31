@@ -48,7 +48,7 @@ def measure_mem_usage():
         return rsc.ru_maxrss*1024
     return rsc.ru_maxrss
 
-USE_ASYNC_MEMLOG = True
+USE_ASYNC_MEMLOG = False
 USE_RUSE_SYNC_MEMLOG = False  # can be faulty
 
 class ParticleSet_Benchmark(ParticleSet):
@@ -206,6 +206,7 @@ class ParticleSet_Benchmark(ParticleSet):
         if verbose_progress:
             pbar = self._create_progressbar_(_starttime, endtime)
 
+        mem_used_start = 0
         if USE_ASYNC_MEMLOG:
             self.async_mem_log.measure_func = measure_mem
             mem_used_start = measure_mem()
