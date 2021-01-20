@@ -119,12 +119,13 @@ class Kernel_Benchmark(Kernel):
             if not g.lat.flags.c_contiguous:
                 # g.lat = g.lat.copy()
                 g.lat = np.array(g.lat, order='C')
+
+        fargs = [byref(f.ctypes_struct) for f in self.field_args.values()]
+        fargs += [c_double(f) for f in self.const_args.values()]
         self._mem_io_timings.stop_timing()
         self._mem_io_timings.accumulate_timing()
 
         self._compute_timings.start_timing()
-        fargs = [byref(f.ctypes_struct) for f in self.field_args.values()]
-        fargs += [c_double(f) for f in self.const_args.values()]
         particle_data = pset._particle_data.ctypes.data_as(c_void_p)
         self._function(c_int(len(pset)), particle_data,
                        c_double(endtime),
