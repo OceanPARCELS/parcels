@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import xarray as xr
-import zarr
 from dask.base import is_dask_collection
 
 from parcels._chunk_cached_array.core import ChunkCachedArray
@@ -226,8 +225,6 @@ def _field_backend(field: Field | VectorField) -> str | None:
             return "Dask"
         elif isinstance(field.data.variable._data, ChunkCachedArray):
             return "ChunkCachedArray"
-        elif isinstance(field.data.variable._data, zarr.Array):
-            return "Zarr"
         elif isinstance(field.data.data, np.ndarray):
             return "NumPy"
         else:
