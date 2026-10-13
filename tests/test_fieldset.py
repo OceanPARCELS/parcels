@@ -11,7 +11,7 @@ from re_assert import Matches
 
 import parcels.tutorial
 import tests
-from parcels import ParticleFile, ParticleSet, convert, open_raw_zarr
+from parcels import ParticleFile, ParticleSet, convert
 from parcels._core.fieldset import FieldSet, IncompatibleMeshesException, _datetime_to_msg
 from parcels._core.mesh import SphericalMesh
 from parcels._core.model import _default_vector_field_components
@@ -430,22 +430,6 @@ def test_fieldset_add_error_on_duplicate_context_values():
         fset1 + fset2
 
 
-@tests.mark.zarr_filterwarning_consolidated_metadata
-@pytest.mark.parametrize("skip", [True, False])
-def test_zarr_warning_on_fieldset_creation(skip, tmp_path):
-    """Test that creating a FieldSet from a Zarr-backed dataset raises a warning about potential backend changes."""
-    ds = parcels.tutorial.open_dataset("CopernicusMarine_data_for_Argo_tutorial/data")
-    ds = convert.copernicusmarine_to_sgrid(fields={"U": ds["uo"], "V": ds["vo"]})
-    path = tmp_path / "ds.zarr"
-    ds.to_zarr(path)
-    ds_zarr = open_raw_zarr(path)
-    if not skip:
-        with pytest.warns(UserWarning, match="Changing a Zarr-backed dataset"):
-            FieldSet.from_sgrid_conventions(ds_zarr, skip_field_data_validation=skip)
-    else:
-        FieldSet.from_sgrid_conventions(ds_zarr, skip_field_data_validation=skip)
-
-
 def test_fieldset_add_context_values():
     """Test that context values from both FieldSets are present in the combined FieldSet."""
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "grid"]].rename({"U_A_grid": "U1"})
@@ -527,28 +511,6 @@ time interval: (np.datetime64('2000-01-02T12:00:00.000000000'), np.datetime64('2
 | U      | Field       |             0 | XLinear(...)            | WindowedArray     |
 | V      | Field       |             0 | XLinear(...)            | WindowedArray     |
 | W      | Field       |             0 | XLinear(...)            | WindowedArray     |
-| UV     | VectorField |             0 | CGrid_Velocity(...)     | -                 |
-| UVW    | VectorField |             0 | CGrid_Velocity(...)     | -                 |
-
-mesh: SphericalMesh(radius=6366707.019493707)
-time interval: (np.datetime64('2000-01-02T12:00:00.000000000'), np.datetime64('2000-01-12T12:00:00.000000000'))
-"""
-    fieldset.describe(io)
-    actual = io.getvalue()
-    assert actual == expected
-
-    path = tmp_path / "ds.zarr"
-    ds_fset.to_zarr(path)
-    ds_zarr = open_raw_zarr(path)
-    fieldset = FieldSet.from_sgrid_conventions(ds_zarr, skip_field_data_validation=True)
-
-    io = StringIO()
-    expected = """\
-| Name   | Type        |   Grid number | Interp method / value   | Parcels backend   |
-|:-------|:------------|--------------:|:------------------------|:------------------|
-| U      | Field       |             0 | XLinear(...)            | Zarr              |
-| V      | Field       |             0 | XLinear(...)            | Zarr              |
-| W      | Field       |             0 | XLinear(...)            | Zarr              |
 | UV     | VectorField |             0 | CGrid_Velocity(...)     | -                 |
 | UVW    | VectorField |             0 | CGrid_Velocity(...)     | -                 |
 
