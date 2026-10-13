@@ -127,6 +127,7 @@ sphinx-autobuild = "*"
 sphinxcontrib-mermaid = "*"
 sphinx-design = "*"
 sphinx-autoapi = "*"
+sphinx-notfound-page = "*"
 vale = "*"
 
 [feature.docs.tasks]

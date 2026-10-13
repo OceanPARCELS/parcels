@@ -12,8 +12,8 @@ import parcels.tutorial
 from parcels._datasets.structured.generated import simple_UV_dataset
 from parcels.kernels import AdvectionRK2, AdvectionRK4
 
-BackendT = Literal["WindowedArray", "Dask", "Zarr", "NumPy", "ChunkCachedArray"]
-BACKENDS: set[BackendT] = {"WindowedArray", "Dask", "Zarr", "NumPy", "ChunkCachedArray"}
+BackendT = Literal["WindowedArray", "Dask", "NumPy", "ChunkCachedArray"]
+BACKENDS: set[BackendT] = {"WindowedArray", "Dask", "NumPy", "ChunkCachedArray"}
 
 
 @pytest.fixture(scope="module")
@@ -47,9 +47,6 @@ def fieldset_uses_backend(fset: parcels.FieldSet, backend: BackendT):
 
 
 def run_simulation(ds: xr.Dataset, output_path: Path, backend: BackendT) -> Path:
-    if backend == "Zarr":
-        raise NotImplementedError("Doesn't work at this level of execution. Also will likely remove Zarr backend.")
-
     if backend == "NumPy":
         ds.load()
 
@@ -96,7 +93,6 @@ def run_simulation(ds: xr.Dataset, output_path: Path, backend: BackendT) -> Path
     BACKENDS
     - {
         "NumPy",  # reference point
-        "Zarr",  # not supported
     },
 )
 def test_nemo_identical_across_backends(nemo_results, tmp_parquet, backend):
@@ -123,7 +119,6 @@ def test_nemo_identical_across_backends(nemo_results, tmp_parquet, backend):
     BACKENDS
     - {
         "NumPy",  # reference point
-        "Zarr",  # not supported
     },
 )
 def test_field_without_depth_identical_across_backends(backend: BackendT):
@@ -158,7 +153,6 @@ def test_field_without_depth_identical_across_backends(backend: BackendT):
     BACKENDS
     - {
         "NumPy",  # reference point
-        "Zarr",  # not supported with this input data
     },
 )
 def test_fieldset_describe_backend(nemo_dataset, backend: BackendT):
