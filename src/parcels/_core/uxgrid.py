@@ -8,7 +8,7 @@ import xarray as xr
 from dask import is_dask_collection
 
 from parcels._core.basegrid import BaseGrid
-from parcels._core.index_search import GRID_SEARCH_ERROR, _search_1d_columns, uxgrid_point_in_cell
+from parcels._core.index_search import GRID_SEARCH_ERROR, _search_1d_array, _search_1d_columns, uxgrid_point_in_cell
 from parcels._core.mesh import SphericalMesh, get_mesh
 from parcels._core.warnings import FieldSetWarning
 
@@ -157,11 +157,6 @@ class UxGrid(BaseGrid):
 
         found = fi >= 0
         if self.z.ndim == 3:
-            if ti is None or tau is None:
-                raise ValueError(
-                    "Searching a UxGrid with a time-varying (3D) z requires the time index ti and barycentric coordinate tau"
-                )
-
             cols_ti = self.z.isel(
                 time=xr.DataArray(np.broadcast_to(ti, fi.shape)[found], dims="points"),
                 n_node=xr.DataArray(self.uxgrid.face_node_connectivity[fi[found], :].values, dims=("points", "nodes")),
@@ -186,10 +181,10 @@ class UxGrid(BaseGrid):
             # Particles outside the mesh are given a NaN z column for vertical searching
             columns = np.full((fi.size, self.z.sizes["zf"]), np.nan)
             columns[found] = xr.dot(node_columns, bcoords, dim="nodes").transpose("points", "zf").values
+            zi, zeta = _search_1d_columns(columns, z)
         else:
-            columns = np.broadcast_to(self.z.values, (z.size, self.z.size))
+            zi, zeta = _search_1d_array(self.z.values, z)
 
-        zi, zeta = _search_1d_columns(columns, z)
         # Particles outside the mesh are given a 0 vertical index and a NaN vertical barycentric coordinate
         zi = np.where(found, zi, 0)
         zeta = np.where(found, zeta, np.nan)

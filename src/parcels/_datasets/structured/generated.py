@@ -7,21 +7,22 @@ import parcels._sgrid as sgrid
 from parcels._core.utils.time import timedelta_to_float
 
 
-def simple_UV_dataset(dims=(360, 2, 30, 4), maxdepth=1, mesh="spherical"):
+def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh="spherical"):
     max_lon = 180.0 if mesh == "spherical" else 1e6
     max_lat = 90.0 if mesh == "spherical" else 1e6
+    shape = (n_times, nz, ny, nx)
 
     return xr.Dataset(
-        {"U": (["time", "depth", "YG", "XG"], np.zeros(dims)), "V": (["time", "depth", "YG", "XG"], np.zeros(dims))},
+        {"U": (["time", "depth", "YG", "XG"], np.zeros(shape)), "V": (["time", "depth", "YG", "XG"], np.zeros(shape))},
         coords={
-            "time": (["time"], xr.date_range("2000", "2001", dims[0]), {"axis": "T"}),
-            "depth": (["depth"], np.linspace(0, maxdepth, dims[1]), {"axis": "Z"}),
-            "YC": (["YC"], np.arange(dims[2]) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(dims[2]), {"axis": "Y", "c_grid_axis_shift": -0.5}),
-            "XC": (["XC"], np.arange(dims[3]) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(dims[3]), {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "lat": (["YG"], np.linspace(-max_lat, max_lat, dims[2]), {"axis": "Y", "c_grid_axis_shift": -0.5}),
-            "lon": (["XG"], np.linspace(-max_lon, max_lon, dims[3]), {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "time": (["time"], xr.date_range("2000", "2001", n_times), {"axis": "T"}),
+            "depth": (["depth"], np.linspace(0, maxdepth, nz), {"axis": "Z"}),
+            "YC": (["YC"], np.arange(ny) + 0.5, {"axis": "Y"}),
+            "YG": (["YG"], np.arange(ny), {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "XC": (["XC"], np.arange(nx) + 0.5, {"axis": "X"}),
+            "XG": (["XG"], np.arange(nx), {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "lat": (["YG"], np.linspace(-max_lat, max_lat, ny), {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "lon": (["XG"], np.linspace(-max_lon, max_lon, nx), {"axis": "X", "c_grid_axis_shift": -0.5}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -39,8 +40,12 @@ def simple_UV_dataset(dims=(360, 2, 30, 4), maxdepth=1, mesh="spherical"):
     )
 
 
-def simple_UV_sigma_dataset(n_times, nz, ny, nx, bottom_depth, eta=None, mesh="flat", start_time="2000-01-01"):
-    """simple_UV_dataset with zero U, V and W and a time-varying (4D) depth on the cell centres: dims[1] sigma interfaces from the surface (depth -eta) to bottom_depth ((YC, XC) array, meters); eta is None or (time, YC, XC), hourly from start_time."""
+def simple_UV_sigma_dataset(
+    n_times=360, nz=2, ny=30, nx=4, bottom_depth=None, eta=None, mesh="flat", start_time="2000-01-01"
+):
+    """simple_UV_dataset with zero U, V and W and a time-varying (4D) depth on the cell centres: nz sigma interfaces from the surface (depth -eta) to bottom_depth ((YC, XC) array, meters; None for a flat bottom at 1 m); eta is None or (time, YC, XC), hourly from start_time."""
+    if bottom_depth is None:
+        bottom_depth = np.ones((ny, nx))
     if np.shape(bottom_depth) != (ny, nx):
         raise ValueError(
             f"bottom_depth must be a (YC, XC) array of shape {(ny, nx)}, got shape {np.shape(bottom_depth)}"
@@ -56,8 +61,8 @@ def simple_UV_sigma_dataset(n_times, nz, ny, nx, bottom_depth, eta=None, mesh="f
         sigma[np.newaxis, :, np.newaxis, np.newaxis] * total_depth[:, np.newaxis] - eta[:, np.newaxis]
     )  # (time, depth, YC, XC)
 
-    ds = simple_UV_dataset(dims=dims, mesh=mesh)
-    ds["W"] = (["time", "depth", "YG", "XG"], np.zeros(dims))
+    ds = simple_UV_dataset(n_times=n_times, nz=nz, ny=ny, nx=nx, mesh=mesh)
+    ds["W"] = (["time", "depth", "YG", "XG"], np.zeros((n_times, nz, ny, nx)))
     return ds.assign_coords(
         time=(["time"], xr.date_range(start_time, periods=n_times, freq="1h"), {"axis": "T"}),
         depth=(["time", "depth", "YC", "XC"], zf, {"axis": "Z"}),

@@ -378,11 +378,6 @@ class XGrid(BaseGrid):
         """Vertical search of each particle in the z column at the centre of its cell using temporal linear
         interpolation between the snapshots ti and ti + 1.
         """
-        if ti is None or tau is None:
-            raise ValueError(
-                "Searching an XGrid with a time-varying (4D) depth requires the time index ti and barycentric coordinate tau"
-            )
-
         found = (yi >= 0) & (xi >= 0)
         offsets = _get_offsets_dictionary(self)
         yi_centre = yi[found] + offsets["Y"]
