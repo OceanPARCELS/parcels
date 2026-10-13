@@ -124,14 +124,13 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data-zarr/Benchmarks_MOi_data_metadata-only/W.zip",
         "data-zarr/Benchmarks_MOi_data_metadata-only/mesh.zip",
     ]
-   + [
-       "data/aifs-single_2025_07_01_00_subset.nc"
-       "data/aifs-single_2025_07_01_06_subset.nc"
-       "data/aifs-single_2025_07_01_12_subset.nc"
-       "data/aifs-single_2025_07_01_18_subset.nc"
-       "data/aifs-single_2025_07_02_00_subset.nc"
-   
-   ]
+    + [
+        "data/aifs-single_2025_07_01_00_subset.nc"
+        "data/aifs-single_2025_07_01_06_subset.nc"
+        "data/aifs-single_2025_07_01_12_subset.nc"
+        "data/aifs-single_2025_07_01_18_subset.nc"
+        "data/aifs-single_2025_07_02_00_subset.nc"
+    ]
 )
 
 _ODIE = pooch.create(
