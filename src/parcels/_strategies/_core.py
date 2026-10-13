@@ -68,4 +68,5 @@ def particlefile_output(draw, nobs=None, nparticles=None) -> io.BytesIO:
         pa.table(df, schema=schema),
         buf,
     )
+    buf.seek(0)
     return buf
