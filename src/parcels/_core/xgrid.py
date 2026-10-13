@@ -400,8 +400,6 @@ class XGrid(BaseGrid):
             tau_found = xr.DataArray(np.broadcast_to(tau, yi.shape)[found], dims="points")
             cell_columns = (1 - tau_found) * columns_ti + tau_found * columns_tnext
 
-        cell_columns = cell_columns.transpose("points", ...)
-
         # Particles outside the grid are given a NaN z column for vertical searching
         columns = np.full((yi.size, cell_columns.shape[1]), np.nan)
         columns[found] = cell_columns.values

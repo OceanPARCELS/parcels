@@ -188,7 +188,7 @@ class UxGrid(BaseGrid):
         bcoords = xr.DataArray(coords[found], dims=("points", "nodes"))
         # Particles outside the mesh are given a NaN z column for vertical searching
         columns = np.full((fi.size, self.z.sizes["zf"]), np.nan)
-        columns[found] = xr.dot(node_columns, bcoords, dim="nodes").transpose("points", "zf").values
+        columns[found] = xr.dot(node_columns, bcoords, dim="nodes").values
         zi, zeta = _search_1d_columns(columns, z)
 
         # Particles outside the mesh are given a 0 vertical index and a NaN vertical barycentric coordinate
