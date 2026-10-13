@@ -155,38 +155,41 @@ class UxGrid(BaseGrid):
             coords[zero_indices, :] = coords_q
             fi[zero_indices] = face_ids_q
 
-        found = fi >= 0
         if self.z.ndim == 3:
-            cols_ti = self.z.isel(
-                time=xr.DataArray(np.broadcast_to(ti, fi.shape)[found], dims="points"),
+            zi, zeta = self._search_time_varying_z(z, fi, coords, ti, tau)
+        else:
+            zi, zeta = _search_1d_array(self.z.values, z)
+
+        return {"Z": {"index": zi, "bcoord": zeta}, "FACE": {"index": fi, "bcoord": coords}}
+
+    def _search_time_varying_z(self, z, fi, coords, ti, tau):
+        """Vertical search of each particle in the z column interpolated barycentrically from the nodes of its face,
+        using temporal linear interpolation between the snapshots ti and ti + 1.
+        """
+        found = fi >= 0
+        cols_ti = self.z.isel(
+            time=xr.DataArray(np.broadcast_to(ti, fi.shape)[found], dims="points"),
+            n_node=xr.DataArray(self.uxgrid.face_node_connectivity[fi[found], :].values, dims=("points", "nodes")),
+            ignore_grid=True,
+        ).compute()
+
+        if self.z.shape[0] == 1:
+            node_columns = cols_ti
+        else:
+            cols_tnext = self.z.isel(
+                time=xr.DataArray(np.broadcast_to(ti + 1, fi.shape)[found], dims="points"),
                 n_node=xr.DataArray(self.uxgrid.face_node_connectivity[fi[found], :].values, dims=("points", "nodes")),
                 ignore_grid=True,
             ).compute()
 
-            if self.z.shape[0] == 1:
-                node_columns = cols_ti
-            else:
-                cols_tnext = self.z.isel(
-                    time=xr.DataArray(np.broadcast_to(ti + 1, fi.shape)[found], dims="points"),
-                    n_node=xr.DataArray(
-                        self.uxgrid.face_node_connectivity[fi[found], :].values, dims=("points", "nodes")
-                    ),
-                    ignore_grid=True,
-                ).compute()
+            tau_points = xr.DataArray(np.broadcast_to(tau, fi.shape)[found], dims="points")
+            node_columns = (1 - tau_points) * cols_ti + tau_points * cols_tnext
 
-                tau_points = xr.DataArray(np.broadcast_to(tau, fi.shape)[found], dims="points")
-                node_columns = (1 - tau_points) * cols_ti + tau_points * cols_tnext
-
-            bcoords = xr.DataArray(coords[found], dims=("points", "nodes"))
-            # Particles outside the mesh are given a NaN z column for vertical searching
-            columns = np.full((fi.size, self.z.sizes["zf"]), np.nan)
-            columns[found] = xr.dot(node_columns, bcoords, dim="nodes").transpose("points", "zf").values
-            zi, zeta = _search_1d_columns(columns, z)
-        else:
-            zi, zeta = _search_1d_array(self.z.values, z)
+        bcoords = xr.DataArray(coords[found], dims=("points", "nodes"))
+        # Particles outside the mesh are given a NaN z column for vertical searching
+        columns = np.full((fi.size, self.z.sizes["zf"]), np.nan)
+        columns[found] = xr.dot(node_columns, bcoords, dim="nodes").transpose("points", "zf").values
+        zi, zeta = _search_1d_columns(columns, z)
 
         # Particles outside the mesh are given a 0 vertical index and a NaN vertical barycentric coordinate
-        zi = np.where(found, zi, 0)
-        zeta = np.where(found, zeta, np.nan)
-
-        return {"Z": {"index": zi, "bcoord": zeta}, "FACE": {"index": fi, "bcoord": coords}}
+        return np.where(found, zi, 0), np.where(found, zeta, np.nan)
