@@ -39,9 +39,9 @@ def simple_UV_dataset(dims=(360, 2, 30, 4), maxdepth=1, mesh="spherical"):
     )
 
 
-def simple_UV_sigma_dataset(dims, bottom_depth, eta=None, mesh="flat", start_time="2000-01-01"):
+def simple_UV_sigma_dataset(n_times, nz, ny, nx, bottom_depth, eta=None, mesh="flat", start_time="2000-01-01"):
     """simple_UV_dataset with zero U, V and W and a time-varying (4D) depth on the cell centres: dims[1] sigma interfaces from the surface (depth -eta) to bottom_depth ((YC, XC) array, meters); eta is None or (time, YC, XC), hourly from start_time."""
-    n_times, nz, ny, nx = dims
+
     if np.shape(bottom_depth) != (ny, nx):
         raise ValueError(
             f"bottom_depth must be a (YC, XC) array of shape {(ny, nx)}, got shape {np.shape(bottom_depth)}"
