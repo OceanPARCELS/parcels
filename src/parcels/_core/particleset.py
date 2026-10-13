@@ -90,7 +90,7 @@ class ParticleSet:
                 if has_time_varying_z:
                     raise ValueError(
                         f"Field {field.name!r} has a time-varying vertical grid, so there is no default "
-                        "particle depth. Pass the particle depths explicitly with `z`."
+                        "particle.z. Pass the particle vertical start locations explicitly with `z`."
                     )
                 for depth in field.grid.depth:
                     if minz is None or np.abs(depth) < np.abs(minz):
