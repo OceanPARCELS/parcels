@@ -16,6 +16,8 @@ __all__ = [
     "AdvectionRK45",
 ]
 
+LEGACY_STAGE1 = False  # reproduce original: st age 1 particle velocity = fluid velocity for Maxey-Riley kernels
+
 
 def AdvectionRK2(particles, fieldset):  # pragma: no cover
     """Advection of particles using second-order Runge-Kutta integration."""
@@ -155,254 +157,82 @@ def AdvectionRK45(particles, fieldset):  # pragma: no cover
     particles.state = np.where(repeat_particles, StatusCode.Repeat, particles.state)
 
 
-def MRAdvectionRK4_3D(particles, fieldset):  # pragma: no cover
-    # Maxey-Riley advection of particles using fourth-order Runge-Kutta integration including vertical velocity, inspired from Meike and Jimena
-    """
-    Advection of particles using Maxey-Riley equation in 2D without Basset
-    history term and Faxen corrections without sinking or floating force.
-    The equation is numerically integrated using the 4th order runge kutta
-    scheme for a 2nd order ODE equation. We appromate the time derivative at t
-    (1rst step rk4) with a forward finite difference and the time derivative
-    at t+delta_t (4th step rk4) with a backward finite difference.
+def fluid_state(fieldset, t0, dt, t, z, y, x, particles):
+    DX, DY, DZ = fieldset.dx, fieldset.dy, fieldset.dz
+    f = fieldset.UVW[t, z, y, x, particles]  # boundary check happens here
+    ft1 = fieldset.UVW[t0 + dt, z, y, x]
+    ft0 = fieldset.UVW[t0, z, y, x]
+    fxp, fxm = fieldset.UVW[t, z, y, x + DX], fieldset.UVW[t, z, y, x - DX]
+    fyp, fym = fieldset.UVW[t, z, y + DY, x], fieldset.UVW[t, z, y - DY, x]
+    fzp, fzm = fieldset.UVW[t, z + DZ, y, x], fieldset.UVW[t, z - DZ, y, x]
+    uf, vf, wf = f
+    D = tuple(
+        (ft1[i] - ft0[i]) / dt
+        + uf * (fxp[i] - fxm[i]) / (2 * DX)
+        + vf * (fyp[i] - fym[i]) / (2 * DY)
+        + wf * (fzp[i] - fzm[i]) / (2 * DZ)
+        for i in range(3)
+    )
+    return f, D
 
-    dependencies:
-    - up, vp, particle velocity (particle variables)
-    - tau, stokes relaxation time particle (particle variable)
-    - B, buoyancy particle (particle variable)
-    - Omega_earth, angular velocity earth (fieldset constant)
-    - delta_x, delta_y, delta_t step for finite difference method gradients
-      (fieldset constants)
-    """
-    tau_inv = 1.0 / particles.tau
-    Bterm = 3.0 / (1.0 + 2.0 * particles.B)
-    Bterm2 = 2 * (1 - particles.B) / (1 + 2 * particles.B)
-    w0 = Bterm2 * 9.81 * particles.tau  ##fieldset.g
-    norm_deltax = 1.0 / (2.0 * 0.001)  # fieldset.dx
-    norm_deltay = 1.0 / (2.0 * 0.0125)  # fieldset.dy
-    norm_deltaz = 1.0 / (2.0 * 0.05)  ##fieldset.dz
 
-    dt_seconds = particles.dt  # already in seconds (0.001 for your 1 ms step)
-    norm_deltat = 1.0 / dt_seconds
+def rhs_DiBene(fieldset, t0, dt, t, z, y, x, vp, particles):
+    G = 9.81
+    nu = 1e-6
+    RHO_F = 1000.0  # fluid density (use ~1025 for seawater)
+    Cm = 0.5  # added mass coefficient (0.5 for spheres)
+    (uf, vf, wf), (Du, Dv, Dw) = fluid_state(fieldset, t0, dt, t, z, y, x, particles)
+    up, vp_, wp = vp
+    du, dv, dw = uf - up, vf - vp_, wf - wp
 
-    # RK4 STEP 1
-    ## read in velocity field at location of particle
-    (uf1, vf1, wf1) = fieldset.UVW[particles]
+    Rep = np.sqrt(du**2 + dv**2 + dw**2) * particles.diaP / nu
+    mass_ratio = np.where(z < fieldset.surface, particles.rho / RHO_F, 1.0)
+    denom = mass_ratio + Cm
 
-    # velocity particle at current step
-    u, v, w = fieldset.UVW[particles]
-    up1 = u  # particles.up
-    vp1 = v  # particles.vp
-    wp1 = w  # particle.wp
+    # Schiller-Naumann: CD*Rep = 24*(1 + 0.15 Rep^0.687), so no 1/Rep
+    k = 18.0 * nu / particles.diaP**2 * (1.0 + 0.15 * Rep**0.687) / denom  # 1/s
+    am = (1 + Cm) / denom
+    buoy = (mass_ratio - 1.0) / denom * G
 
-    # calculate time derivative of fluid field
-    # (uf_tp1, vf_tp1) = fieldset.UV[time+particle.dt,
-    (uf_tp1, vf_tp1, wf_tp1) = fieldset.UVW[particles.t + particles.dt, particles.z, particles.y, particles.x]
-    (uf_tm1, vf_tm1, wf_tm1) = fieldset.UVW[particles.t, particles.z, particles.y, particles.x]
-    dudt1 = (uf_tp1 - uf_tm1) * norm_deltat
-    dvdt1 = (vf_tp1 - vf_tm1) * norm_deltat
-    dwdt1 = (wf_tp1 - wf_tm1) * norm_deltat
+    return (
+        am * Du + k * du,
+        am * Dv + k * dv,
+        am * Dw + k * dw - buoy,
+    )
 
-    # calculate spatial gradients fluid field
-    (u_dxm1, v_dxm1, w_dxm1) = fieldset.UVW[particles.t, particles.z, particles.y, particles.x - 0.001]  # fieldset.dx
-    (u_dxp1, v_dxp1, w_dxp1) = fieldset.UVW[particles.t, particles.z, particles.y, particles.x + 0.001]  # + fieldset.dx
-    (u_dym1, v_dym1, w_dym1) = fieldset.UVW[particles.t, particles.z, particles.y - 0.0125, particles.x]  # fieldset.dy
-    (u_dyp1, v_dyp1, w_dyp1) = fieldset.UVW[particles.t, particles.z, particles.y + 0.0125, particles.x]  # fieldset.dy
-    (u_dzm1, v_dzm1, w_dzm1) = fieldset.UVW[particles.t, particles.z - 0.05, particles.y, particles.x]  ##fieldset.dz
-    (u_dzp1, v_dzp1, w_dzp1) = fieldset.UVW[particles.t, particles.z + 0.05, particles.y, particles.x]  ##fieldset.dz
-    dudx1 = (u_dxp1 - u_dxm1) * norm_deltax
-    dudy1 = (u_dyp1 - u_dym1) * norm_deltay
-    dudz1 = (u_dzp1 - u_dzm1) * norm_deltaz
-    dvdx1 = (v_dxp1 - v_dxm1) * norm_deltax
-    dvdy1 = (v_dyp1 - v_dym1) * norm_deltay
-    dvdz1 = (v_dzp1 - v_dzm1) * norm_deltaz
-    dwdx1 = (w_dxp1 - w_dxm1) * norm_deltax
-    dwdy1 = (w_dyp1 - w_dym1) * norm_deltay
-    dwdz1 = (w_dzp1 - w_dzm1) * norm_deltaz
 
-    # caluclate material derivative fluid
-    DuDt1 = dudt1 + uf1 * dudx1 + vf1 * dudy1 + wf1 * dudz1
-    DvDt1 = dvdt1 + uf1 * dvdx1 + vf1 * dvdy1 + wf1 * dvdz1
-    DwDt1 = dwdt1 + uf1 * dwdx1 + vf1 * dwdy1 + wf1 * dwdz1
+def DiBeneAdvectionRK4_3D(particles, fieldset):
+    dt = particles.dt
+    t0, x0, y0, z0 = particles.t, particles.x, particles.y, particles.z
+    v0 = (particles.up, particles.vp, particles.wp)
 
-    # drag force
-    udrag1 = tau_inv * (uf1 - up1)
-    vdrag1 = tau_inv * (vf1 - vp1)
-    wdrag1 = tau_inv * (w0 + wf1 - wp1)
+    kx, kv = [], []
+    x, y, z, t = x0, y0, z0, t0
+    v = tuple(fieldset.UVW[particles]) if LEGACY_STAGE1 else v0  # stage 1 only
+    for c in (0.0, 0.5, 0.5, 1.0):
+        if kx:
+            x = x0 + c * dt * kx[-1][0]
+            y = y0 + c * dt * kx[-1][1]
+            z = z0 + c * dt * kx[-1][2]
+            # z = np.minimum(z0 + c * dt * kx[-1][2], fieldset.surface)
+            v = tuple(v0[i] + c * dt * kv[-1][i] for i in range(3))
+            t = t0 + c * dt
+        kx.append(v)
+        kv.append(rhs_DiBene(fieldset, t0, dt, t, z, y, x, v, particles))
 
-    # acceleration
-    a_lon1 = Bterm * (DuDt1) + udrag1
-    a_lat1 = Bterm * (DvDt1) + vdrag1
-    a_depth1 = Bterm * DwDt1 + wdrag1
+    w = (1, 2, 2, 1)
+    dvel = [sum(wi * k[i] for wi, k in zip(w, kv, strict=True)) * dt / 6.0 for i in range(3)]
+    dpos = [sum(wi * k[i] for wi, k in zip(w, kx, strict=True)) * dt / 6.0 for i in range(3)]
 
-    # lon, lat for next step
-    lon1 = particles.x + 0.5 * up1 * dt_seconds
-    lat1 = particles.y + 0.5 * vp1 * dt_seconds
-    depth1 = particles.z + 0.5 * wp1 * particles.dt
-    time1 = particles.t + 0.5 * particles.dt
+    # stop at the surface and kill vertical velocity
+    at_surface = (z0 + dpos[2]) >= fieldset.surface
+    particles.dz += np.where(at_surface, fieldset.surface - z0, dpos[2])
+    particles.wp = np.where(at_surface, 0.0, particles.wp + dvel[2])
 
-    # RK4 STEP 2
-    # velocity particle at current step
-    up2 = particles.up + 0.5 * a_lon1 * dt_seconds
-    vp2 = particles.vp + 0.5 * a_lat1 * dt_seconds
-    wp2 = particles.wp + 0.5 * a_depth1 * particles.dt
-
-    # read in velocity at location of particle
-    (uf2, vf2, wf2) = fieldset.UVW[time1, depth1, lat1, lon1]
-
-    # calculate time derivative of fluid field
-    (uf_tp2, vf_tp2, wf_tp2) = fieldset.UVW[particles.t + particles.dt, depth1, lat1, lon1]
-    (uf_tm2, vf_tm2, wf_tm2) = fieldset.UVW[particles.t, depth1, lat1, lon1]
-    dudt2 = (uf_tp2 - uf_tm2) * norm_deltat
-    dvdt2 = (vf_tp2 - vf_tm2) * norm_deltat
-    dwdt2 = (wf_tp2 - wf_tm2) * norm_deltat
-
-    # calculate spatial gradients fluid field
-    (u_dxm2, v_dxm2, w_dxm2) = fieldset.UVW[time1, depth1, lat1, lon1 - 0.001]  # fieldset.dx
-    (u_dxp2, v_dxp2, w_dxp2) = fieldset.UVW[time1, depth1, lat1, lon1 + 0.001]  ##fieldset.dx
-    (u_dym2, v_dym2, w_dym2) = fieldset.UVW[time1, depth1, lat1 - 0.0125, lon1]  # fieldset.dy
-    (u_dyp2, v_dyp2, w_dyp2) = fieldset.UVW[time1, depth1, lat1 + 0.0125, lon1]  # fieldset.dy
-    (u_dzm2, v_dzm2, w_dzm2) = fieldset.UVW[time1, depth1 - 0.05, lat1, lon1]  ##fieldset.dz
-    (u_dzp2, v_dzp2, w_dzp2) = fieldset.UVW[time1, depth1 + 0.05, lat1, lon1]  ##fieldset.dz
-    dudx2 = (u_dxp2 - u_dxm2) * norm_deltax
-    dudy2 = (u_dyp2 - u_dym2) * norm_deltay
-    dudz2 = (u_dzp2 - u_dzm2) * norm_deltaz
-    dvdx2 = (v_dxp2 - v_dxm2) * norm_deltax
-    dvdy2 = (v_dyp2 - v_dym2) * norm_deltay
-    dvdz2 = (v_dzp2 - v_dzm2) * norm_deltaz
-    dwdx2 = (w_dxp2 - w_dxm2) * norm_deltax
-    dwdy2 = (w_dyp2 - w_dym2) * norm_deltay
-    dwdz2 = (w_dzp2 - w_dzm2) * norm_deltaz
-
-    # caluclate material derivative fluid
-    DuDt2 = dudt2 + uf2 * dudx2 + vf2 * dudy2 + wf2 * dudz2
-    DvDt2 = dvdt2 + uf2 * dvdx2 + vf2 * dvdy2 + wf2 * dvdz2
-    DwDt2 = dwdt2 + uf2 * dwdx2 + vf2 * dwdy2 + wf2 * dwdz2
-
-    # drag force
-    udrag2 = tau_inv * (uf2 - up2)
-    vdrag2 = tau_inv * (vf2 - vp2)
-    wdrag2 = tau_inv * (w0 + wf2 - wp2)
-
-    # acceleration
-    a_lon2 = Bterm * (DuDt2) + udrag2
-    a_lat2 = Bterm * (DvDt2) + vdrag2
-    a_depth2 = Bterm * DwDt2 + wdrag2
-
-    # lon, lat for next step
-    lon2 = particles.x + 0.5 * up2 * dt_seconds
-    lat2 = particles.y + 0.5 * vp2 * dt_seconds
-    depth2 = particles.z + 0.5 * wp2 * particles.dt
-    time2 = particles.t + 0.5 * particles.dt
-
-    # RK4 STEP 3
-    # velocity particle at current step
-    up3 = particles.up + 0.5 * a_lon2 * dt_seconds
-    vp3 = particles.vp + 0.5 * a_lat2 * dt_seconds
-    wp3 = particles.wp + 0.5 * a_depth2 * particles.dt
-
-    # read in velocity at location of particle
-    (uf3, vf3, wf3) = fieldset.UVW[time2, depth2, lat2, lon2]
-
-    # calculate time derivative of fluid field
-    (uf_tp3, vf_tp3, wf_tp3) = fieldset.UVW[particles.t + particles.dt, depth2, lat2, lon2]
-    (uf_tm3, vf_tm3, wf_tm3) = fieldset.UVW[particles.t, depth2, lat2, lon2]
-    dudt3 = (uf_tp3 - uf_tm3) * norm_deltat
-    dvdt3 = (vf_tp3 - vf_tm3) * norm_deltat
-    dwdt3 = (wf_tp3 - wf_tm3) * norm_deltat
-
-    # calculate spatial gradients fluid field
-    (u_dxm3, v_dxm3, w_dxm3) = fieldset.UVW[time2, depth2, lat2, lon2 - 0.001]  ##fieldset.dx
-    (u_dxp3, v_dxp3, w_dxp3) = fieldset.UVW[time2, depth2, lat2, lon2 + 0.001]  # fieldset.dx
-    (u_dym3, v_dym3, w_dym3) = fieldset.UVW[time2, depth2, lat2 - 0.0125, lon2]  # fieldset.dy
-    (u_dyp3, v_dyp3, w_dyp3) = fieldset.UVW[time2, depth2, lat2 + 0.0125, lon2]  # fieldset.dy
-    (u_dzm3, v_dzm3, w_dzm3) = fieldset.UVW[time2, depth2 - 0.05, lat2, lon2]  ## fieldset.dz
-    (u_dzp3, v_dzp3, w_dzp3) = fieldset.UVW[time2, depth2 + 0.05, lat2, lon2]  ##fieldset.dz
-    dudx3 = (u_dxp3 - u_dxm3) * norm_deltax
-    dudy3 = (u_dyp3 - u_dym3) * norm_deltay
-    dudz3 = (u_dzp3 - u_dzm3) * norm_deltaz
-    dvdz3 = (v_dzp3 - v_dzm3) * norm_deltaz
-    dvdx3 = (v_dxp3 - v_dxm3) * norm_deltax
-    dvdy3 = (v_dyp3 - v_dym3) * norm_deltay
-    dwdx3 = (w_dxp3 - w_dxm3) * norm_deltax
-    dwdy3 = (w_dyp3 - w_dym3) * norm_deltay
-    dwdz3 = (w_dzp3 - w_dzm3) * norm_deltaz
-
-    # caluclate material derivative fluid
-    DuDt3 = dudt3 + uf3 * dudx3 + vf3 * dudy3 + wf3 * dudz3
-    DvDt3 = dvdt3 + uf3 * dvdx3 + vf3 * dvdy3 + wf3 * dvdz3
-    DwDt3 = dwdt3 + uf3 * dwdx3 + vf3 * dwdy3 + wf3 * dwdz3
-
-    # drag force
-    udrag3 = tau_inv * (uf3 - up3)
-    vdrag3 = tau_inv * (vf3 - vp3)
-    wdrag3 = tau_inv * (w0 + wf3 - wp3)
-
-    # acceleration
-    a_lon3 = Bterm * (DuDt3) + udrag3
-    a_lat3 = Bterm * (DvDt3) + vdrag3
-    a_depth3 = Bterm * DwDt3 + wdrag3
-
-    # lon, lat for next step
-    lon3 = particles.x + up3 * dt_seconds
-    lat3 = particles.y + vp3 * dt_seconds
-    depth3 = particles.z + wp3 * particles.dt
-    time3 = particles.t + particles.dt
-
-    # RK4 STEP 4
-    # velocity particle at current step
-    up4 = particles.up + a_lon3 * dt_seconds
-    vp4 = particles.vp + a_lat3 * dt_seconds
-    wp4 = particles.wp + a_depth3 * particles.dt
-
-    # read in velocity at location of particle
-    (uf4, vf4, wf4) = fieldset.UVW[time3, depth3, lat3, lon3]
-
-    # calculate time derivative of fluid field
-    (uf_tp4, vf_tp4, wf_tp4) = fieldset.UVW[particles.t + particles.dt, depth3, lat3, lon3]
-    (uf_tm4, vf_tm4, wf_tm4) = fieldset.UVW[particles.t, depth3, lat3, lon3]
-    dudt4 = (uf_tp4 - uf_tm4) * norm_deltat
-    dvdt4 = (vf_tp4 - vf_tm4) * norm_deltat
-    dwdt4 = (wf_tp4 - wf_tm4) * norm_deltat
-
-    # calculate spatial gradients fluid field
-    (u_dxm4, v_dxm4, w_dxm4) = fieldset.UVW[time3, depth3, lat3, lon3 - 0.001]  ##fieldset.dx
-    (u_dxp4, v_dxp4, w_dxp4) = fieldset.UVW[time3, depth3, lat3, lon3 + 0.001]  ## fieldset.dx
-    (u_dym4, v_dym4, w_dym4) = fieldset.UVW[time3, depth3, lat3 - 0.0125, lon3]  ##fieldset.dy
-    (u_dyp4, v_dyp4, w_dyp4) = fieldset.UVW[time3, depth3, lat3 + 0.0125, lon3]  ##fieldset.dy
-    (u_dzm4, v_dzm4, w_dzm4) = fieldset.UVW[time3, depth3 - 0.05, lat3, lon3]  ## fieldset.dz
-    (u_dzp4, v_dzp4, w_dzp4) = fieldset.UVW[time3, depth3 + 0.05, lat3, lon3]  ## fieldset.dz
-    dudx4 = (u_dxp4 - u_dxm4) * norm_deltax
-    dudy4 = (u_dyp4 - u_dym4) * norm_deltay
-    dudz4 = (u_dzp4 - u_dzm4) * norm_deltaz
-    dvdx4 = (v_dxp4 - v_dxm4) * norm_deltax
-    dvdy4 = (v_dyp4 - v_dym4) * norm_deltay
-    dvdz4 = (v_dzp4 - v_dzm4) * norm_deltaz
-    dwdx4 = (w_dxp4 - w_dxm4) * norm_deltax
-    dwdy4 = (w_dyp4 - w_dym4) * norm_deltay
-    dwdz4 = (w_dzp4 - w_dzm4) * norm_deltaz
-
-    # caluclate material derivative fluid
-    DuDt4 = dudt4 + uf4 * dudx4 + vf4 * dudy4 + wf4 * dudz4
-    DvDt4 = dvdt4 + uf4 * dvdx4 + vf4 * dvdy4 + wf4 * dvdz4
-    DwDt4 = dwdt4 + uf4 * dwdx4 + vf4 * dwdy4 + wf4 * dwdz4
-
-    # drag force
-    udrag4 = tau_inv * (uf4 - up4)
-    vdrag4 = tau_inv * (vf4 - vp4)
-    wdrag4 = tau_inv * (w0 + wf4 - wp4)
-
-    # acceleration
-    a_lon4 = Bterm * (DuDt4) + udrag4
-    a_lat4 = Bterm * (DvDt4) + vdrag4
-    a_depth4 = Bterm * DwDt4 + wdrag4
-
-    # RK4 INTEGRATION STEP
-    particles.up += (a_lon1 + 2 * a_lon2 + 2 * a_lon3 + a_lon4) * dt_seconds / 6.0
-    particles.vp += (a_lat1 + 2 * a_lat2 + 2 * a_lat3 + a_lat4) * dt_seconds / 6.0
-    particles.wp += (a_depth1 + 2 * a_depth2 + 2 * a_depth3 + a_depth4) * dt_seconds / 6.0
-    particles.dx += (up1 + 2 * up2 + 2 * up3 + up4) * dt_seconds / 6.0
-    particles.dy += (vp1 + 2 * vp2 + 2 * vp3 + vp4) * dt_seconds / 6.0
-    particles.dz += (wp1 + 2 * wp2 + 2 * wp3 + wp4) * dt_seconds / 6.0
+    particles.up += dvel[0]
+    particles.vp += dvel[1]
+    particles.dx += dpos[0]
+    particles.dy += dpos[1]
 
 
 def AdvectionAnalytical(particles, fieldset):  # pragma: no cover

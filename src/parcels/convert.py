@@ -713,8 +713,8 @@ def swash_to_sgrid(
     coord = scipy.io.loadmat(coord_file)
     lon = coord["Xp"]
     lat = coord["Yp"]
-    XC = np.arange(lon.shape[1])
-    YC = np.arange(lat.shape[0])
+    XC = lon[0, :]  # np.arange(lon.shape[1])
+    YC = lat[:, 0]  # np.arange(lat.shape[0])
     bot = coord["Botlev"]
 
     required = [u_file, v_file, w_file, watlev_file]
@@ -759,8 +759,8 @@ def swash_to_sgrid(
     times = times_ms.astype("timedelta64[ms]")
 
     nz = len(idx_u[time_keys[0]])
-    depth_centers = np.linspace(1.0 / (2 * nz), 1.0 - 1.0 / (2 * nz), nz)  # [0, 1]
-    depth_interfaces = np.linspace(0, 1, nz + 1)  # [0, 1]
+    ZC = np.linspace(1.0 / (2 * nz), 1.0 - 1.0 / (2 * nz), nz)  # [0, 1]
+    ZG = np.linspace(0, 1, nz + 1)  # [0, 1]
 
     nt, ny, nx = len(times), len(YC), len(XC)
     watlev = np.full((nt, ny, nx), np.nan, dtype=np.float32)
@@ -777,25 +777,26 @@ def swash_to_sgrid(
             veta[ti, k - 1] = mat_v[key]
         for k, key in idx_w[tk].items():
             if k < nz:
-                w[ti, (nz - 1) - k] = mat_w[key]
+                # w[ti, (nz - 1) - k] = mat_w[key]
+                w[ti, nz - k] = mat_w[key]
         for k, key in idx_om.get(tk, {}).items():
             if k < nz:
-                omega[ti, (nz - 1) - k] = mat_o[key]
+                # omega[ti, (nz - 1) - k] = mat_o[key]
+                omega[ti, nz - k] = mat_o[key]
 
     has_omega = bool(idx_om)
 
     data_vars = {
         "watlev": (["time", "YG", "XG"], watlev),
-        "U": (["time", "depth", "YC", "XG"], vksi),
-        "V": (["time", "depth", "YG", "XC"], veta),
-        "W": (["time", "depth_f", "YC", "XC"], w),
+        "U": (["time", "ZC", "YG", "XG"], vksi),
+        "V": (["time", "ZC", "YG", "XG"], veta),
+        "W": (["time", "ZG", "YC", "XC"], w),
         "z": (
-            ["depth_f"],
-            depth_interfaces.astype(np.float32),
+            ["ZG"],
+            ZG.astype(np.float32),
             {
                 "standard_name": "ocean_sigma_coordinate",
                 "units": "1",
-                "positive": "down",
                 "comment": "normalised sigma-coordinate of layer interfaces ([0,1]), constant in space/time",
             },
         ),
@@ -803,7 +804,7 @@ def swash_to_sgrid(
     }
     if has_omega:
         data_vars["omega"] = (
-            ["time", "depth_f", "YC", "XC"],
+            ["time", "ZG", "YC", "XC"],
             omega,
             {"long_name": "sigma-coordinate vertical velocity", "units": "1/s"},
         )
@@ -811,38 +812,31 @@ def swash_to_sgrid(
     ds = xr.Dataset(
         data_vars,
         coords={
-            "time": (["time"], times, {"axis": "T", "units": "ms"}),
-            "depth": (["depth"], depth_centers, {"axis": "Z", "units": "normalised", "negative": "down"}),
-            "depth_f": (["depth_f"], depth_interfaces, {"axis": "Z", "units": "normalised", "negative": "down"}),
-            "YG": (["YG"], YC + 0.5, {"axis": "Y", "c_grid_axis_shift": +0.5}),
-            "YC": (["YC"], YC, {"axis": "Y"}),
             "XG": (["XG"], XC + 0.5, {"axis": "X", "c_grid_axis_shift": +0.5}),
             "XC": (["XC"], XC, {"axis": "X"}),
+            "YG": (["YG"], YC + 0.5, {"axis": "Y", "c_grid_axis_shift": +0.5}),
+            "YC": (["YC"], YC, {"axis": "Y"}),
+            "ZG": (["ZG"], ZG, {"axis": "Z", "units": "normalised", "negative": "down"}),
+            "ZC": (["ZC"], ZC, {"axis": "Z", "units": "normalised", "negative": "down"}),
             "lat": (["YG", "XG"], lat, {"axis": "Y", "units": "m", "c_grid_axis_shift": +0.5}),
             "lon": (["YG", "XG"], lon, {"axis": "X", "units": "m", "c_grid_axis_shift": +0.5}),
+            "time": (["time"], times, {"axis": "T", "units": "ms"}),
+            "depth": (["depth"], ZG, {"axis": "Z", "units": "normalised", "negative": "down"}),
         },
-    )
-
-    header = mat_h["__header__"]
-    if isinstance(header, bytes):
-        header = header.decode("utf-8")
-    ds.attrs.update(header=header, version=mat_h["__version__"], globals=mat_h["__globals__"])
-
-    ds["grid"] = xr.DataArray(
-        0,
-        attrs=sgrid.SGrid2DMetadata(
+    ).pipe(
+        sgrid._attach_sgrid_metadata,
+        sgrid.SGrid2DMetadata(
             cf_role="grid_topology",
             topology_dimension=2,
-            node_dimensions=("XC", "YC"),
-            node_coordinates=("lon", "lat"),
+            node_dimensions=("XG", "YG"),
             face_dimensions=(
-                sgrid.FaceNodePadding("XC", "XG", sgrid.Padding.HIGH),
-                sgrid.FaceNodePadding("YC", "YG", sgrid.Padding.HIGH),
+                sgrid.FaceNodePadding("XC", "XG", sgrid.Padding.LOW),
+                sgrid.FaceNodePadding("YC", "YG", sgrid.Padding.LOW),
             ),
-            vertical_dimensions=(sgrid.FaceNodePadding("depth", "depth_f", sgrid.Padding.LOW),),
-        ).to_attrs(),
+            node_coordinates=("lon", "lat"),
+            vertical_dimensions=(sgrid.FaceNodePadding("ZC", "ZG", sgrid.Padding.NONE),),
+        ),
     )
-
     return ds
 
 
