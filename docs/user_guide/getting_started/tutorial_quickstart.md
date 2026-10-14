@@ -29,7 +29,16 @@ A Parcels simulation of Lagrangian trajectories of virtual particles requires tw
 hydrodynamics fields in which the particles are tracked. Here we provide an example using a subset of the
 [Global Ocean Physics Reanalysis](https://doi.org/10.48670/moi-00021) from the Copernicus Marine Service.
 
+This dataset is bundled in Parcels' tutorial data registry. {py:func}`parcels.tutorial.open_dataset()` downloads the
+files into a local cache on first use (subsequent calls return the cached copy) and opens them as an `xarray` dataset.
+Use {py:func}`parcels.tutorial.list_datasets()` to see all available tutorial datasets.
+
 ```{code-cell}
+print(
+  "Datasets here are cached at",
+  parcels.tutorial.cache_path ,
+  " . Note that this varies machine to machine.",
+) # manually delete this folder to force re-downloads
 ds_fields = parcels.tutorial.open_dataset("CopernicusMarine_data_for_Argo_tutorial/data")
 ds_fields
 ```

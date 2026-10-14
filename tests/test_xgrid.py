@@ -164,7 +164,7 @@ def test_dim_with_duplicate_axis():
     ds["data_g"] = ds["data_g"].expand_dims("vertical_dimensions_dim2", 1)
 
     z = ds["vertical_dimensions_dim2"]
-    z.attrs.update({"axis": "Z", "c_grid_axis_shift": 0})
+    z.attrs.update({"axis": "Z"})
     ds["vertical_dimensions_dim2"] = z
 
     # TODO: Clean up this attribute setting (really, this should be on the source datasets)

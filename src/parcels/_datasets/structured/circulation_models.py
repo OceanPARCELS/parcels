@@ -616,7 +616,6 @@ def _MITgcm_mds():
                     "units": "m",
                     "positive": "down",
                     "axis": "Z",
-                    "c_grid_axis_shift": -0.5,
                 },
             ),
             "YC": (
@@ -639,7 +638,6 @@ def _MITgcm_mds():
                     "units": "degrees_north",
                     "coordinate": "YG XG",
                     "axis": "Y",
-                    "c_grid_axis_shift": -0.5,
                 },
             ),
             "XC": (
@@ -662,7 +660,6 @@ def _MITgcm_mds():
                     "units": "degrees_east",
                     "coordinate": "YG XG",
                     "axis": "X",
-                    "c_grid_axis_shift": -0.5,
                 },
             ),
         },

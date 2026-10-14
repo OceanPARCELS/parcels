@@ -125,6 +125,13 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data-zarr/Benchmarks_MOi_data_metadata-only/W.zip",
         "data-zarr/Benchmarks_MOi_data_metadata-only/mesh.zip",
     ]
+    + [
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_00_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_06_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_12_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_18_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_02_00_subset.nc",
+    ]
 )
 
 _ODIE = pooch.create(
@@ -248,6 +255,7 @@ _DATASET_KEYS_AND_CONFIGS: dict[str, tuple[_ParcelsDataset, _Purpose]] = dict([
     # ("SWASH_data/data", (_V3Dataset(_ODIE,"data/SWASH_data/field_00655*.nc"), _Purpose.TUTORIAL)),
     # ("WOA_data/data", (_V3Dataset(_ODIE,"data/WOA_data/woa18_decav_t*_04.nc", _preprocess_set_cf_calendar_360_day), _Purpose.TUTORIAL)),
     ("CROCOidealized_data/data", (_V3Dataset(_ODIE,"data/CROCOidealized_data/CROCO_idealized.nc"), _Purpose.TUTORIAL)),
+    ("AIFSmeteo/data", (_V3Dataset(_ODIE,"data/AIFS-meteo-data/*.nc"), _Purpose.TUTORIAL))
 ] + [
     ("Benchmarks_FESOM2-baroclinic-gyre/data", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/data.zip', zarr_format=2), _Purpose.TESTING)),
     ("Benchmarks_FESOM2-baroclinic-gyre/grid", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/grid.zip', zarr_format=2),_Purpose.TESTING)),

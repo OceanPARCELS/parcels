@@ -31,14 +31,14 @@ def _rotated_curvilinear_grid():
             "V_C_grid": (["time", "ZG", "YG", "XC"], np.random.rand(T, Z, Y, X)),
         },
         coords={
-            "XG": (["XG"], XG, {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "YG": (["YG"], YG, {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "XG": (["XG"], XG, {"axis": "X"}),
+            "YG": (["YG"], YG, {"axis": "Y"}),
             "XC": (["XC"], XG + 0.5, {"axis": "X"}),
             "YC": (["YC"], YG + 0.5, {"axis": "Y"}),
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -50,12 +50,12 @@ def _rotated_curvilinear_grid():
             "lon": (
                 ["YG", "XG"],
                 LON,
-                {"axis": "X", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "X"},
             ),
             "lat": (
                 ["YG", "XG"],
                 LAT,
-                {"axis": "Y", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "Y"},
             ),
         },
     )
@@ -109,14 +109,14 @@ def _unrolled_cone_curvilinear_grid():
             "V_C_grid": (["time", "ZG", "YG", "XC"], np.random.rand(T, Z, Y, X)),
         },
         coords={
-            "XG": (["XG"], XG, {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "YG": (["YG"], YG, {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "XG": (["XG"], XG, {"axis": "X"}),
+            "YG": (["YG"], YG, {"axis": "Y"}),
             "XC": (["XC"], XG + 0.5, {"axis": "X"}),
             "YC": (["YC"], YG + 0.5, {"axis": "Y"}),
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -128,12 +128,12 @@ def _unrolled_cone_curvilinear_grid():
             "lon": (
                 ["YG", "XG"],
                 LON,
-                {"axis": "X", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "X"},
             ),
             "lat": (
                 ["YG", "XG"],
                 LAT,
-                {"axis": "Y", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "Y"},
             ),
         },
     )
@@ -167,13 +167,13 @@ datasets = {
             "XG": (
                 ["XG"],
                 2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": -0.5},
+                {"axis": "X"},
             ),
             "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X) + 0.5), {"axis": "X"}),
             "YG": (
                 ["YG"],
                 2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": -0.5},
+                {"axis": "Y"},
             ),
             "YC": (
                 ["YC"],
@@ -183,7 +183,7 @@ datasets = {
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -222,13 +222,13 @@ datasets = {
             "XG": (
                 ["XG"],
                 2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": 0.5},
+                {"axis": "X"},
             ),
             "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X) - 0.5), {"axis": "X"}),
             "YG": (
                 ["YG"],
                 2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": 0.5},
+                {"axis": "Y"},
             ),
             "YC": (
                 ["YC"],
@@ -238,7 +238,7 @@ datasets = {
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": 0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -277,13 +277,13 @@ datasets = {
             "XG": (
                 ["XG"],
                 2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": 0.5},
+                {"axis": "X"},
             ),
             "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X - 1) - 0.5), {"axis": "X"}),
             "YG": (
                 ["YG"],
                 2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": 0.5},
+                {"axis": "Y"},
             ),
             "YC": (
                 ["YC"],
@@ -293,7 +293,7 @@ datasets = {
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": 0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -332,13 +332,13 @@ datasets = {
             "XG": (
                 ["XG"],
                 2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": -0.5},
+                {"axis": "X"},
             ),
             "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X + 1) + 0.5), {"axis": "X"}),
             "YG": (
                 ["YG"],
                 2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": -0.5},
+                {"axis": "Y"},
             ),
             "YC": (
                 ["YC"],
@@ -348,7 +348,7 @@ datasets = {
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
