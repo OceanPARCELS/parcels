@@ -176,35 +176,6 @@ def dummy_comodo_3d_ds() -> xr.Dataset:
             "V_C_grid": (["time", "ZG", "YG", "XC"], np.random.rand(T, Z, Y, X)),
         },
         coords={
-            # "XG": (
-            #     ["XG"],
-            #     2 * np.pi / X * np.arange(0, X),
-            #     {"axis": "X", "c_grid_axis_shift": -0.5},
-            # ),
-            # "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X) + 0.5), {"axis": "X"}),
-            # "YG": (
-            #     ["YG"],
-            #     2 * np.pi / (Y) * np.arange(0, Y),
-            #     {"axis": "Y", "c_grid_axis_shift": -0.5},
-            # ),
-            # "YC": (
-            #     ["YC"],
-            #     2 * np.pi / (Y) * (np.arange(0, Y) + 0.5),
-            #     {"axis": "Y"},
-            # ),
-            # "ZG": (
-            #     ["ZG"],
-            #     np.arange(Z),
-            #     {"axis": "Z", "c_grid_axis_shift": -0.5},
-            # ),
-            # "ZC": (
-            #     ["ZC"],
-            #     np.arange(Z) + 0.5,
-            #     {"axis": "Z"},
-            # ),
-            # "lon": (["XG"], 2 * np.pi / X * np.arange(0, X)),
-            # "lat": (["YG"], 2 * np.pi / (Y) * np.arange(0, Y)),
-            # "depth": (["ZG"], np.arange(Z)),
             "time": (["time"], TIME, {"axis": "T"}),
         },
     )
