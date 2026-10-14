@@ -5,6 +5,7 @@ import math
 import numpy as np
 
 from parcels._core.statuscodes import StatusCode
+from parcels.kernels._integration import RK2, RK4
 
 __all__ = [
     "AdvectionAnalytical",
@@ -17,62 +18,42 @@ __all__ = [
 ]
 
 
+def rhs_uv(fieldset, t, z, y, x, particles):
+    return fieldset.UV[t, z, y, x, particles]
+
+
+def rhs_uvw(fieldset, t, z, y, x, particles):
+    return fieldset.UVW[t, z, y, x, particles]
+
+
 def AdvectionRK2(particles, fieldset):  # pragma: no cover
     """Advection of particles using second-order Runge-Kutta integration."""
-    (u1, v1) = fieldset.UV[particles]
-    x1 = particles.x + u1 * 0.5 * particles.dt
-    y1 = particles.y + v1 * 0.5 * particles.dt
-    (u2, v2) = fieldset.UV[particles.t + 0.5 * particles.dt, particles.z, y1, x1, particles]
-    particles.dx += u2 * particles.dt
-    particles.dy += v2 * particles.dt
+    u, v = RK2(particles, fieldset, rhs_uv)
+    particles.dx += u * particles.dt
+    particles.dy += v * particles.dt
 
 
 def AdvectionRK2_3D(particles, fieldset):  # pragma: no cover
     """Advection of particles using second-order Runge-Kutta integration including vertical velocity."""
-    (u1, v1, w1) = fieldset.UVW[particles]
-    x1 = particles.x + u1 * 0.5 * particles.dt
-    y1 = particles.y + v1 * 0.5 * particles.dt
-    z1 = particles.z + w1 * 0.5 * particles.dt
-    (u2, v2, w2) = fieldset.UVW[particles.t + 0.5 * particles.dt, z1, y1, x1, particles]
-    particles.dx += u2 * particles.dt
-    particles.dy += v2 * particles.dt
-    particles.dz += w2 * particles.dt
+    u, v, w = RK2(particles, fieldset, rhs_uvw)
+    particles.dx += u * particles.dt
+    particles.dy += v * particles.dt
+    particles.dz += w * particles.dt
 
 
 def AdvectionRK4(particles, fieldset):  # pragma: no cover
     """Advection of particles using fourth-order Runge-Kutta integration."""
-    (u1, v1) = fieldset.UV[particles]
-    x1 = particles.x + u1 * 0.5 * particles.dt
-    y1 = particles.y + v1 * 0.5 * particles.dt
-    (u2, v2) = fieldset.UV[particles.t + 0.5 * particles.dt, particles.z, y1, x1, particles]
-    x2 = particles.x + u2 * 0.5 * particles.dt
-    y2 = particles.y + v2 * 0.5 * particles.dt
-    (u3, v3) = fieldset.UV[particles.t + 0.5 * particles.dt, particles.z, y2, x2, particles]
-    x3 = particles.x + u3 * particles.dt
-    y3 = particles.y + v3 * particles.dt
-    (u4, v4) = fieldset.UV[particles.t + particles.dt, particles.z, y3, x3, particles]
-    particles.dx += (u1 + 2 * u2 + 2 * u3 + u4) / 6.0 * particles.dt
-    particles.dy += (v1 + 2 * v2 + 2 * v3 + v4) / 6.0 * particles.dt
+    u, v = RK4(particles, fieldset, rhs_uv)
+    particles.dx += u * particles.dt
+    particles.dy += v * particles.dt
 
 
 def AdvectionRK4_3D(particles, fieldset):  # pragma: no cover
     """Advection of particles using fourth-order Runge-Kutta integration including vertical velocity."""
-    (u1, v1, w1) = fieldset.UVW[particles]
-    x1 = particles.x + u1 * 0.5 * particles.dt
-    y1 = particles.y + v1 * 0.5 * particles.dt
-    z1 = particles.z + w1 * 0.5 * particles.dt
-    (u2, v2, w2) = fieldset.UVW[particles.t + 0.5 * particles.dt, z1, y1, x1, particles]
-    x2 = particles.x + u2 * 0.5 * particles.dt
-    y2 = particles.y + v2 * 0.5 * particles.dt
-    z2 = particles.z + w2 * 0.5 * particles.dt
-    (u3, v3, w3) = fieldset.UVW[particles.t + 0.5 * particles.dt, z2, y2, x2, particles]
-    x3 = particles.x + u3 * particles.dt
-    y3 = particles.y + v3 * particles.dt
-    z3 = particles.z + w3 * particles.dt
-    (u4, v4, w4) = fieldset.UVW[particles.t + particles.dt, z3, y3, x3, particles]
-    particles.dx += (u1 + 2 * u2 + 2 * u3 + u4) / 6 * particles.dt
-    particles.dy += (v1 + 2 * v2 + 2 * v3 + v4) / 6 * particles.dt
-    particles.dz += (w1 + 2 * w2 + 2 * w3 + w4) / 6 * particles.dt
+    u, v, w = RK4(particles, fieldset, rhs_uvw)
+    particles.dx += u * particles.dt
+    particles.dy += v * particles.dt
+    particles.dz += w * particles.dt
 
 
 def AdvectionEE(particles, fieldset):  # pragma: no cover
