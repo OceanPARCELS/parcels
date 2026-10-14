@@ -34,7 +34,11 @@ files into a local cache on first use (subsequent calls return the cached copy) 
 Use {py:func}`parcels.tutorial.list_datasets()` to see all available tutorial datasets.
 
 ```{code-cell}
-print("Datasets are cached at", parcels.tutorial.cache_path) # manually delete this folder to force re-downloads
+print(
+  "Datasets here are cached at",
+  parcels.tutorial.cache_path ,
+  " . Note that this varies machine to machine.",
+) # manually delete this folder to force re-downloads
 ds_fields = parcels.tutorial.open_dataset("CopernicusMarine_data_for_Argo_tutorial/data")
 ds_fields
 ```
