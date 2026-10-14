@@ -90,8 +90,8 @@ jupyter = "*"
 matplotlib-base = ">=2.0.2"
 gsw = "*"
 py-triangle = "*"
-cmocean = ">=4.0.3,<5"
-cartopy = ">=0.26.0,<0.27"
+cmocean = "*"
+cartopy = "*"
 
 [feature.devtools.dependencies]
 pdbpp = "*"
