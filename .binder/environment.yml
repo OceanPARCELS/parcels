@@ -4,4 +4,3 @@ channels:
 dependencies:
   - parcels
   - pooch
-  - trajan

@@ -87,7 +87,6 @@ tests-notebooks = { cmd = "pytest --nbval-lax docs/user_guide/examples", descrip
 
 [feature.notebooks.dependencies]
 jupyter = "*"
-trajan = "*"
 matplotlib-base = ">=2.0.2"
 gsw = "*"
 py-triangle = "*"
