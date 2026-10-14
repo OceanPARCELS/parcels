@@ -32,9 +32,11 @@ getting_started/explanation_concepts.md
 
 ## Converting model data to FieldSets
 
+Below is a list of tutorials that show how to convert data from ocean (🌊) and atmospheric (🍃) models to Parcels FieldSets.
+
 ```{toctree}
-:caption: Converting model data to FieldSets
-:name: converting-model-data
+:caption: Converting 🌊 ocean models
+:name: converting-ocean-models
 :titlesonly:
 examples/tutorial_nemo.ipynb
 examples/tutorial_croco_3D.ipynb
@@ -42,6 +44,13 @@ examples/tutorial_mitgcm.ipynb
 examples/tutorial_delft3d.ipynb
 examples/tutorial_fesom.ipynb
 examples/tutorial_schism.ipynb
+```
+
+```{toctree}
+:caption: Converting 🍃 atmospheric models
+:name: converting-atmospheric-models
+:titlesonly:
+examples/tutorial_aifs.ipynb
 ```
 
 ## Work with FieldSets
