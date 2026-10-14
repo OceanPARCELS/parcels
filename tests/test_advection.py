@@ -28,6 +28,8 @@ from parcels._datasets.structured.generated import (
 )
 from parcels._datasets.structured.generic import datasets_sgrid
 from parcels.kernels import (
+    RK2,
+    RK4,
     AdvectionDiffusionEM,
     AdvectionDiffusionM1,
     AdvectionEE,
@@ -230,6 +232,25 @@ def test_length1dimensions(u_value, x_slice, v_value, y_slice, w_value, z_slice)
     np.testing.assert_allclose(np.array([p.y - y0 for p in pset]), 4 * v_value, atol=1e-5)
     if w_value:
         np.testing.assert_allclose(np.array([p.z - z0 for p in pset]), 4 * w_value, atol=1e-5)
+
+
+@pytest.mark.parametrize("npart", [1, 2, 3, 10])
+@pytest.mark.parametrize("integrator", [RK2, RK4])
+def test_advection_with_integrators_singlefield(npart, integrator):
+    """Test that the RK2 and RK4 integrators don't work with a single field (e.g. U)"""
+    ds = simple_UV_dataset(mesh="flat").rename({"U": "T"})
+    fset = parcels.FieldSet.from_sgrid_conventions(ds, mesh="flat")
+
+    pset = parcels.ParticleSet(fset, x=np.zeros(npart), y=np.arange(npart))
+
+    def rhs(fieldset, t, z, y, x, particles):
+        return fieldset.T[t, z, y, x, particles]
+
+    def SingleField(particles, fieldset):
+        integrator(particles, fieldset, rhs)
+
+    with pytest.raises(TypeError):
+        pset.execute(SingleField, runtime=np.timedelta64(1, "s"), dt=np.timedelta64(1, "s"))
 
 
 def test_radialrotation(npart=10):
