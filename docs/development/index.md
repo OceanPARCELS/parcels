@@ -30,7 +30,7 @@ unstructured_grid_search
 
 ## Why contribute?
 
-[Lagrangian Ocean Analysis](https://doi.org/10.1016/j.ocemod.2017.11.008) is one of the primary modelling tools available to oceanographers to understand how ocean currents transport material. This modelling approach allows researchers to model the ocean and understand the [movement of water](https://doi.org/10.1029/2023GL105662) in the ocean itself (or even [on other planets](https://doi.org/10.3847/1538-4357/ac9d94)), as well as the transport of [nutrients](https://doi.org/10.1029/2023GL108001), [marine organisms](https://doi.org/10.3354/meps14526), [oil](https://doi.org/10.1590/0001-3765202220210391), [plastic](https://doi.org/10.1038/s41561-023-01216-0), as well as [almost](https://doi.org/10.1016/j.robot.2024.104730) [anything](https://doi.org/10.1111/cobi.14295) [else](https://doi.org/10.1016/j.marpolbul.2023.115254) that would be adrift at sea. Since ocean currents play a key role in climate by storing heat and carbon, and also in the formation of the 'plastic soup', understanding transport phenomena in the ocean is crucial to support a more sustainable future.
+[Lagrangian Ocean Analysis](https://doi.org/10.1016/j.ocemod.2017.11.008) is one of the primary modelling tools available to oceanographers to understand how ocean currents transport material. This modelling approach allows researchers to model the ocean and understand the [movement of water](https://doi.org/10.1029/2023GL105662) in the ocean itself (or even [on other planets](https://doi.org/10.3847/1538-4357/ac9d94)), as well as the transport of [nutrients](https://doi.org/10.1029/2023GL108001), [marine organisms](https://www.int-res.com/journals/meps/articles/meps14526), [oil](https://doi.org/10.1590/0001-3765202220210391), [plastic](https://doi.org/10.1038/s41561-023-01216-0), as well as [almost](https://doi.org/10.1016/j.robot.2024.104730) [anything](https://doi.org/10.1111/cobi.14295) [else](https://doi.org/10.1016/j.marpolbul.2023.115254) that would be adrift at sea. Since ocean currents play a key role in climate by storing heat and carbon, and also in the formation of the 'plastic soup', understanding transport phenomena in the ocean is crucial to support a more sustainable future.
 
 The Parcels code, for which development started in 2015, is now one of the most widely used tools for Lagrangian Ocean Analysis. It's used by dozens of groups around the world - see [this list](https://parcels-code.org/papers-citing-parcels#papers-citing-parcels) for a full list of the peer-reviewed articles using Parcels. Its flexibility for users to create new, custom 'behaviours' (i.e. let virtual particles be controlled by other mechanics than only the ocean flow) and its compatibility with many different types of hydrodynamic input data are the two key features.
 
@@ -86,14 +86,14 @@ In the [Projects panel](https://github.com/Parcels-code/parcels/projects?query=i
 ### Environment setup
 
 ```{note}
-Parcels, alongside popular projects like [Xarray](https://github.com/pydata/xarray), uses [Pixi](https://pixi.sh) to manage environments and run developer tooling. Pixi is a modern alternative to Conda and also includes other powerful tooling useful for a project like Parcels ([read more](https://github.com/Parcels-code/Parcels/issues/2205)). It is our sole development workflow - we do not offer a Conda development workflow. Give Pixi a try, you won't regret it!
+Parcels, alongside popular projects like [Xarray](https://github.com/pydata/xarray), uses [Pixi](https://pixi.prefix.dev/) to manage environments and run developer tooling. Pixi is a modern alternative to Conda and also includes other powerful tooling useful for a project like Parcels ([read more](https://github.com/Parcels-code/Parcels/issues/2205)). It is our sole development workflow - we do not offer a Conda development workflow. Give Pixi a try, you won't regret it!
 ```
 
 To get started contributing to Parcels:
 
-**Step 1:** [Install Pixi](https://pixi.sh/latest/installation/).
+**Step 1:** [Install Pixi](https://pixi.prefix.dev/latest/installation/).
 
-**Step 2:** [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo#forking-a-repository)
+**Step 2:** [Fork the repository](https://docs.github.com/en/pull-requests/how-tos/work-with-forks/fork-a-repo)
 
 **Step 3:** Clone your fork and `cd` into the repository.
 
@@ -157,7 +157,7 @@ For those familiar with Conda, you are used to activating an environment. With P
 From there:
 
 - create a git branch, implement, commit, and push your changes
-- [create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) (PR) into `main` of the original repo making sure to link to the issue that you are working on. Not yet finished with your feature but still want feedback on how you're going? Then mark it as "draft" and `@ping` a maintainer. See our [maintainer notes](maintainer.md) to see our PR review workflow.
+- [create a pull request](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/creating-a-pull-request-from-a-fork) (PR) into `main` of the original repo making sure to link to the issue that you are working on. Not yet finished with your feature but still want feedback on how you're going? Then mark it as "draft" and `@ping` a maintainer. See our [maintainer notes](maintainer.md) to see our PR review workflow.
 
 ### Code guidelines
 

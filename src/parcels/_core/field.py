@@ -398,8 +398,11 @@ def _get_positions(field: Field, t, z, y, x, particles, _ei) -> tuple[dict, dict
         raise ValueError(f"Time values for particles with indices {nan_indices} cannot be NaN.")
     particle_positions = {"t": t, "z": z, "y": y, "x": x}
     grid_positions = {}
-    grid_positions.update(_search_time_index(field, t))
-    grid_positions.update(field.grid.search(z, y, x, ei=_ei))
+    time_positions = _search_time_index(field, t)
+    grid_positions.update(time_positions)
+    grid_positions.update(
+        field.grid.search(z, y, x, ei=_ei, ti=time_positions["T"]["index"], tau=time_positions["T"]["bcoord"])
+    )
     _update_particles_ei(particles, grid_positions, field)
     _update_particle_states_position(particles, grid_positions)
     return particle_positions, grid_positions

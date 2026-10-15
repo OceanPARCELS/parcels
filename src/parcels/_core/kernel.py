@@ -184,14 +184,12 @@ class Kernel:
         """
         compute_time_direction = 1 if dt > 0 else -1
 
-        pset._data["state"][:] = StatusCode.Evaluate
+        pset._data["state"][:] = StatusCode.Success
 
-        while (len(pset) > 0) and np.any(np.isin(pset.state, [StatusCode.Evaluate, StatusCode.Repeat])):
+        while (len(pset) > 0) and np.any(np.isin(pset.state, [StatusCode.Success, StatusCode.Repeat])):
             time_to_endtime = compute_time_direction * (endtime - pset.t)
 
-            evaluate_particles = (np.isin(pset.state, [StatusCode.Success, StatusCode.Evaluate])) & (
-                time_to_endtime >= 0
-            )
+            evaluate_particles = (pset.state == StatusCode.Success) & (time_to_endtime >= 0)
             if not np.any(evaluate_particles):
                 return StatusCode.Success
 
@@ -216,7 +214,7 @@ class Kernel:
 
             # apply position/time update only to particles still in a normal state
             # (particles that signalled Stop*/Delete/errors should not have time/position advanced)
-            update_particles = evaluate_particles & np.isin(pset.state, [StatusCode.Evaluate, StatusCode.Success])
+            update_particles = evaluate_particles & (pset.state == StatusCode.Success)
             if np.any(update_particles):
                 self._position_update(pset[update_particles], self._fieldset)
 
@@ -225,7 +223,7 @@ class Kernel:
                 pset._data["dt"][:] = dt
 
             # Set particle state for particles that reached endtime
-            particles_endofloop = (pset.state == StatusCode.Evaluate) & (pset.t == endtime)
+            particles_endofloop = (pset.state == StatusCode.Success) & (pset.t == endtime)
             pset[particles_endofloop].state = StatusCode.EndofLoop
 
             # delete particles that signalled deletion

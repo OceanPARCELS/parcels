@@ -1,4 +1,4 @@
-"""Module controlling the writing of ParticleSets to Zarr file."""
+"""Module controlling the writing of ParticleSets to Parquet file."""
 
 from __future__ import annotations
 
@@ -140,7 +140,7 @@ class ParticleFile:
         return self._path
 
     def write(self, pset: ParticleSet | ParticleSetView, t, fieldset=None, indices=None):
-        """Write all data from one time step to the zarr file,
+        """Write all data from one time step to the parquet file,
         before the particle locations are updated.
 
         Parameters

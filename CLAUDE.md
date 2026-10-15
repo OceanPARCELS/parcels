@@ -6,5 +6,4 @@
   explicitly instructed
 - Never post "update" messages, progress reports, or explanatory comments on
   GitHub issues/PRs unless specifically instructed
-- When creating commits, always include a co-authorship trailer:
-  `Co-authored-by: Claude <noreply@anthropic.com>`
+- Avoid adding co-authorship trailers for LLM agents to commits.

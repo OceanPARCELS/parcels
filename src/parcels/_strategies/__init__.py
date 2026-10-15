@@ -8,7 +8,7 @@ except ImportError as err:
     )
     raise err
 
-from . import sgrid, time, particle
+from . import sgrid, time, particle, chunk_cached_array
 from ._core import particlefile_output
 
-__all__ = ["particle", "particlefile_output", "sgrid", "time"]
+__all__ = ["chunk_cached_array", "particle", "particlefile_output", "sgrid", "time"]

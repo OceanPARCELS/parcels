@@ -44,6 +44,7 @@ extensions = [
     "sphinxcontrib.mermaid",
     "sphinx_design",
     "autoapi.extension",
+    "notfound.extension",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -122,6 +123,7 @@ exclude_patterns = [
     "jupyter_execute",
     "**.ipynb_checkpoints",
     ".jupyter_cache",
+    "paper-v4/*",
 ]
 
 # The reST default role (used for this markup: `text`) to use for all
@@ -512,7 +514,7 @@ epub_exclude_files = ["search.html"]
 # epub_use_index = True
 
 # -- Options for MyST parser ----------------------------------------------
-myst_heading_anchors = 3
+myst_heading_anchors = 4
 
 myst_enable_extensions = ["substitution", "amsmath", "dollarmath"]
 

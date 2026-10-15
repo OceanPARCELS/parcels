@@ -1,7 +1,5 @@
 import abc
 import enum
-import fnmatch
-import glob
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -51,6 +49,7 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m_uo-vo_31.00E-33.00E_33.00S-30.00S_0.49-2225.08m_2024-01-01-2024-02-01.nc",
         "data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_so_31.00E-33.00E_33.00S-30.00S_0.49-2225.08m_2024-01-01-2024-02-01.nc",
         "data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_thetao_31.00E-33.00E_33.00S-30.00S_0.49-2225.08m_2024-01-01-2024-02-01.nc",
+        "data/CopernicusMarine_data_for_Argo_tutorial/cmems_obs-wind_glo_phy_my_l4_0.125deg_PT1H_multi-vars_31.06E-32.94E_32.94S-30.06S_2024-01-01-2024-02-01.nc",
     ]
     + ["data/CopernicusMarine_data_for_stuck_particles_tutorial/cmems_mod_glo_phy_my_0.083deg_P1D-m_NL.nc"]
     # + [
@@ -113,10 +112,6 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data/SWASH_data/field_0065552.nc",
         "data/SWASH_data/field_0065557.nc",
     ]
-    + [
-        "data-matlab/F1ALL.mat",
-        "data-matlab/F1GRD.mat",
-    ]
     # + [f"data/WOA_data/woa18_decav_t{m:02d}_04.nc" for m in range(1, 13)]
     + ["data/CROCOidealized_data/CROCO_idealized.nc"]
     # These datasets are from v4 of Parcels where we're opting for Zipped zarr datasets
@@ -130,6 +125,13 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data-zarr/Benchmarks_MOi_data_metadata-only/W.zip",
         "data-zarr/Benchmarks_MOi_data_metadata-only/mesh.zip",
     ]
+    + [
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_00_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_06_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_12_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_18_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_02_00_subset.nc",
+    ]
 )
 
 _ODIE = pooch.create(
@@ -140,9 +142,6 @@ _ODIE = pooch.create(
 
 
 class _ParcelsDataset(abc.ABC):
-    @abc.abstractmethod
-    def get_dataset_files(self) -> list[str]: ...
-
     @abc.abstractmethod
     def open_dataset(self) -> xr.Dataset: ...
 
@@ -157,11 +156,6 @@ class _V3Dataset(_ParcelsDataset):
 
         first, second, *_ = path_relative_to_pup.split("/")
         self.v3_dataset_name = f"{first}/{second}"  # e.g., data/my_dataset
-
-    def get_dataset_files(self) -> list[str]:
-        self.download_relevant_files()
-        matches = sorted(glob.glob(f"{self.pup.path}/{self.path_relative_to_root}"))
-        return matches
 
     def open_dataset(self) -> xr.Dataset:
         self.download_relevant_files()
@@ -183,7 +177,7 @@ class _V3Dataset(_ParcelsDataset):
 
     def download_relevant_files(self) -> None:
         for file in self.pup.registry:
-            if fnmatch.fnmatch(file, self.path_relative_to_root):
+            if self.v3_dataset_name in file:
                 self.pup.fetch(file)
         return
 
@@ -193,12 +187,6 @@ class _ZarrZipDataset(_ParcelsDataset):
         self.pup = pup
         self.path_relative_to_root = path_relative_to_pup
         self.zarr_format = zarr_format
-
-    def get_dataset_files(self) -> list[str]:
-        for file in self.pup.registry:
-            if fnmatch.fnmatch(file, self.path_relative_to_root):
-                self.pup.fetch(file)
-        return sorted(glob.glob(f"{self.pup.path}/{self.path_relative_to_root}"))
 
     def open_dataset(self) -> xr.Dataset:
         self.pup.fetch(self.path_relative_to_root)
@@ -229,21 +217,13 @@ class _Purpose(enum.Enum):
 
 _TPurpose = Literal["testing", "tutorial"]
 
-
-class _Scope(enum.Enum):
-    DOWNLOAD_ONLY = "download_only"
-    OPEN = "open"
-
-
-_TScope = Literal["download_only", "open"]
-
 # The first here is a human readable key used to open datasets, with an object to open the datasets
 # fmt: off
-_DATASET_KEYS_AND_CONFIGS: dict[str, tuple[_ParcelsDataset, _Purpose, _Scope]] = dict([
+_DATASET_KEYS_AND_CONFIGS: dict[str, tuple[_ParcelsDataset, _Purpose]] = dict([
     # ("MovingEddies_data/P", (_V3Dataset(_ODIE,"data/MovingEddies_data/moving_eddiesP.nc"), _Purpose.TUTORIAL)),
     # ("MovingEddies_data/U", (_V3Dataset(_ODIE,"data/MovingEddies_data/moving_eddiesU.nc"), _Purpose.TUTORIAL)),
     # ("MovingEddies_data/V", (_V3Dataset(_ODIE,"data/MovingEddies_data/moving_eddiesV.nc"), _Purpose.TUTORIAL)),
-    ("MITgcm_example_data/mitgcm_UV_surface_zonally_reentrant", (_V3Dataset(_ODIE,"data/MITgcm_example_data/mitgcm_UV_surface_zonally_reentrant.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
+    ("MITgcm_example_data/mitgcm_UV_surface_zonally_reentrant", (_V3Dataset(_ODIE,"data/MITgcm_example_data/mitgcm_UV_surface_zonally_reentrant.nc"), _Purpose.TUTORIAL)),
     # ("OFAM_example_data/U", (_V3Dataset(_ODIE,"data/OFAM_example_data/OFAM_simple_U.nc"), _Purpose.TUTORIAL)),
     # ("OFAM_example_data/V", (_V3Dataset(_ODIE,"data/OFAM_example_data/OFAM_simple_V.nc"), _Purpose.TUTORIAL)),
     # ("Peninsula_data/U", (_V3Dataset(_ODIE,"data/Peninsula_data/peninsulaU.nc"), _Purpose.TUTORIAL)),
@@ -251,41 +231,43 @@ _DATASET_KEYS_AND_CONFIGS: dict[str, tuple[_ParcelsDataset, _Purpose, _Scope]] =
     # ("Peninsula_data/P", (_V3Dataset(_ODIE,"data/Peninsula_data/peninsulaP.nc"), _Purpose.TUTORIAL)),
     # ("Peninsula_data/T", (_V3Dataset(_ODIE,"data/Peninsula_data/peninsulaT.nc"), _Purpose.TUTORIAL)),
     # ("GlobCurrent_example_data/data", (_V3Dataset(_ODIE,"data/GlobCurrent_example_data/*000000-GLOBCURRENT-L4-CUReul_hs-ALT_SUM-v02.0-fv01.0.nc", pre_decode_cf_callable=patch_dataset_v4_compat), _Purpose.TUTORIAL)),
-    ("CopernicusMarine_data_for_Argo_tutorial/data", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-*.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("Delft3D_data/Rotterdam_tiny", (_V3Dataset(_ODIE,"data/Delft3D_data/Rotterdam_tiny.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("CopernicusMarine_data_for_stuck_particles_tutorial/data", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_stuck_particles_tutorial/cmems_mod_glo_phy_my_0.083deg_P1D-m_NL.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
+    ("CopernicusMarine_data_for_Argo_tutorial/data", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-*.nc"), _Purpose.TUTORIAL)),
+    ("CopernicusMarine_data_for_Argo_tutorial/data_wind", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_Argo_tutorial/cmems_obs-wind_glo_phy*.nc"), _Purpose.TUTORIAL)),
+    ("Delft3D_data/Rotterdam_tiny", (_V3Dataset(_ODIE,"data/Delft3D_data/Rotterdam_tiny.nc"), _Purpose.TUTORIAL)),
+    ("CopernicusMarine_data_for_stuck_particles_tutorial/data", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_stuck_particles_tutorial/cmems_mod_glo_phy_my_0.083deg_P1D-m_NL.nc"), _Purpose.TUTORIAL)),
     # ("DecayingMovingEddy_data/U", (_V3Dataset(_ODIE,"data/DecayingMovingEddy_data/decaying_moving_eddyU.nc"), _Purpose.TUTORIAL)),
     # ("DecayingMovingEddy_data/V", (_V3Dataset(_ODIE,"data/DecayingMovingEddy_data/decaying_moving_eddyV.nc"), _Purpose.TUTORIAL)),
-    ("FESOM_periodic_channel/fesom_channel", (_V3Dataset(_ODIE,"data/FESOM_periodic_channel/*fesom_channel.nc"), _Purpose.TUTORIAL, _Scope.DOWNLOAD_ONLY)),
-    ("SCHISM_LakeOntario/out2d", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/out2d.schism_lake_ontario.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("SCHISM_LakeOntario/horizontalVelX", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/horizontalVelX.schism_lake_ontario.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("SCHISM_LakeOntario/horizontalVelY", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/horizontalVelY.schism_lake_ontario.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("NemoCurvilinear_data_zonal/U", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/U_purely_zonal-ORCA025_grid_U.nc4"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("NemoCurvilinear_data_zonal/V", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/V_purely_zonal-ORCA025_grid_V.nc4"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("NemoCurvilinear_data_zonal/mesh_mask", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/mesh_mask.nc4", _preprocess_drop_time_from_mesh2), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("NemoNorthSeaORCA025-N006_data/U", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/ORCA025-N06_200001*05U.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("NemoNorthSeaORCA025-N006_data/V", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/ORCA025-N06_200001*05V.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("NemoNorthSeaORCA025-N006_data/W", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/ORCA025-N06_200001*05W.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("NemoNorthSeaORCA025-N006_data/mesh_mask", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/coordinates.nc", _preprocess_drop_time_from_mesh1), _Purpose.TUTORIAL, _Scope.OPEN)),
+    ("FESOM_periodic_channel/fesom_channel", (_V3Dataset(_ODIE,"data/FESOM_periodic_channel/fesom_channel.nc"), _Purpose.TUTORIAL)),
+    ("FESOM_periodic_channel/u.fesom_channel", (_V3Dataset(_ODIE,"data/FESOM_periodic_channel/u.fesom_channel.nc"), _Purpose.TUTORIAL)),
+    ("FESOM_periodic_channel/v.fesom_channel", (_V3Dataset(_ODIE,"data/FESOM_periodic_channel/v.fesom_channel.nc"), _Purpose.TUTORIAL)),
+    ("FESOM_periodic_channel/w.fesom_channel", (_V3Dataset(_ODIE,"data/FESOM_periodic_channel/w.fesom_channel.nc"), _Purpose.TUTORIAL)),
+    ("SCHISM_LakeOntario/out2d", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/out2d.schism_lake_ontario.nc"), _Purpose.TUTORIAL)),
+    ("SCHISM_LakeOntario/horizontalVelX", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/horizontalVelX.schism_lake_ontario.nc"), _Purpose.TUTORIAL)),
+    ("SCHISM_LakeOntario/horizontalVelY", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/horizontalVelY.schism_lake_ontario.nc"), _Purpose.TUTORIAL)),
+    ("NemoCurvilinear_data_zonal/U", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/U_purely_zonal-ORCA025_grid_U.nc4"), _Purpose.TUTORIAL)),
+    ("NemoCurvilinear_data_zonal/V", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/V_purely_zonal-ORCA025_grid_V.nc4"), _Purpose.TUTORIAL)),
+    ("NemoCurvilinear_data_zonal/mesh_mask", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/mesh_mask.nc4", _preprocess_drop_time_from_mesh2), _Purpose.TUTORIAL)),
+    ("NemoNorthSeaORCA025-N006_data/U", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/ORCA025-N06_200001*05U.nc"), _Purpose.TUTORIAL)),
+    ("NemoNorthSeaORCA025-N006_data/V", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/ORCA025-N06_200001*05V.nc"), _Purpose.TUTORIAL)),
+    ("NemoNorthSeaORCA025-N006_data/W", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/ORCA025-N06_200001*05W.nc"), _Purpose.TUTORIAL)),
+    ("NemoNorthSeaORCA025-N006_data/mesh_mask", (_V3Dataset(_ODIE,"data/NemoNorthSeaORCA025-N006_data/coordinates.nc", _preprocess_drop_time_from_mesh1), _Purpose.TUTORIAL)),
     # "POPSouthernOcean_data/t.x1_SAMOC_flux.16900*.nc", # TODO v4: In v3 but should not be in v4 https://github.com/Parcels-code/Parcels/issues/2571#issuecomment-4214476973
     # ("SWASH_data/data", (_V3Dataset(_ODIE,"data/SWASH_data/field_00655*.nc"), _Purpose.TUTORIAL)),
     # ("WOA_data/data", (_V3Dataset(_ODIE,"data/WOA_data/woa18_decav_t*_04.nc", _preprocess_set_cf_calendar_360_day), _Purpose.TUTORIAL)),
-    ("CROCOidealized_data/data", (_V3Dataset(_ODIE,"data/CROCOidealized_data/CROCO_idealized.nc"), _Purpose.TUTORIAL, _Scope.OPEN)),
-    ("SWASH_data/data", (_V3Dataset(_ODIE,"data-matlab/F1*.mat"), _Purpose.TUTORIAL, _Scope.DOWNLOAD_ONLY)),
+    ("CROCOidealized_data/data", (_V3Dataset(_ODIE,"data/CROCOidealized_data/CROCO_idealized.nc"), _Purpose.TUTORIAL)),
+    ("AIFSmeteo/data", (_V3Dataset(_ODIE,"data/AIFS-meteo-data/*.nc"), _Purpose.TUTORIAL))
 ] + [
-    ("Benchmarks_FESOM2-baroclinic-gyre/data", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/data.zip', zarr_format=2), _Purpose.TESTING, _Scope.OPEN)),
-    ("Benchmarks_FESOM2-baroclinic-gyre/grid", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/grid.zip', zarr_format=2), _Purpose.TESTING, _Scope.OPEN)),
-    ("Benchmarks_MOi_data_metadata-only/U", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/U.zip"), _Purpose.TESTING, _Scope.OPEN)),
-    ("Benchmarks_MOi_data_metadata-only/V", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/V.zip"), _Purpose.TESTING, _Scope.OPEN)),
-    ("Benchmarks_MOi_data_metadata-only/W", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/W.zip"), _Purpose.TESTING, _Scope.OPEN)),
-    ("Benchmarks_MOi_data_metadata-only/mesh", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/mesh.zip"), _Purpose.TESTING, _Scope.OPEN)),
+    ("Benchmarks_FESOM2-baroclinic-gyre/data", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/data.zip', zarr_format=2), _Purpose.TESTING)),
+    ("Benchmarks_FESOM2-baroclinic-gyre/grid", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/grid.zip', zarr_format=2),_Purpose.TESTING)),
+    ("Benchmarks_MOi_data_metadata-only/U", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/U.zip"), _Purpose.TESTING)),
+    ("Benchmarks_MOi_data_metadata-only/V", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/V.zip"), _Purpose.TESTING)),
+    ("Benchmarks_MOi_data_metadata-only/W", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/W.zip"), _Purpose.TESTING)),
+    ("Benchmarks_MOi_data_metadata-only/mesh", (_ZarrZipDataset(_ODIE, "data-zarr/Benchmarks_MOi_data_metadata-only/mesh.zip"), _Purpose.TESTING)),
 ])
 # fmt: on
 
 
-def list_remote_datasets(
-    purpose: _TPurpose | Literal["any"] = "any", scope: _TScope | Literal["any"] = "any"
-) -> list[str]:
+def list_remote_datasets(purpose: _TPurpose | Literal["any"] = "any") -> list[str]:
     """List the available remote datasets.
 
     Use :func:`open_dataset` to download and open one of the datasets.
@@ -296,30 +278,17 @@ def list_remote_datasets(
         Filter datasets by purpose. Use ``'any'`` (default) to return all
         datasets, ``'tutorial'`` for tutorial datasets, or ``'testing'`` for
         datasets used in tests.
-    scope : {'any', 'download_only', 'open'}, optional
-        Filter datasets by scope. Use ``'any'`` (default) to return all datasets,
-        ``'open'`` to return datasets that can be downloaded and opened, or
-        ``'download_only'`` for datasets that can only be downloaded.
 
     Returns
     -------
     datasets : list of str
         The names of the available datasets matching the given purpose.
     """
+    if purpose == "any":
+        return list(_DATASET_KEYS_AND_CONFIGS.keys())
 
-    def _test_purpose(p, purpose):
-        if purpose == "any":
-            return True
-        return p == _Purpose(purpose)
-
-    def _test_scope(s, scope):
-        if scope == "any":
-            return True
-        return s == _Scope(scope)
-
-    return [
-        k for (k, (_, p, s)) in _DATASET_KEYS_AND_CONFIGS.items() if _test_purpose(p, purpose) and _test_scope(s, scope)
-    ]
+    purpose_enum = _Purpose(purpose)
+    return [k for (k, (_, p)) in _DATASET_KEYS_AND_CONFIGS.items() if p == purpose_enum]
 
 
 def open_remote_dataset(name: str, purpose: _TPurpose | Literal["any"] = "any"):
@@ -345,37 +314,6 @@ def open_remote_dataset(name: str, purpose: _TPurpose | Literal["any"] = "any"):
         raise ValueError(
             f"Dataset {name!r} not found. Available datasets are: " + ", ".join(list_remote_datasets(purpose=purpose))
         )
-    if name not in list_remote_datasets(scope="open"):
-        raise ValueError(
-            f"Dataset {name!r} does not have Scope 'open', so is not intended to be opened. Use get_remote_dataset() to download the files instead."
-        )
+
     dataset_config = _DATASET_KEYS_AND_CONFIGS[name][0]
     return dataset_config.open_dataset()
-
-
-def get_remote_dataset(name: str, purpose: _TPurpose | Literal["any"] = "any") -> list[str]:
-    """Download the files of a remote dataset.
-
-    Use :func:`list_datasets` to see the available dataset names.
-
-    Parameters
-    ----------
-    name : str
-        Name of the dataset to open. Must be one of the keys returned by
-        :func:`list_datasets`.
-    purpose : {'any', 'testing', 'tutorial'}, optional
-        Purpose filter used to populate the error message when ``name`` is not
-        found. Defaults to ``'any'``.
-
-    Returns
-    -------
-    list of str
-        The list of dataset files.
-    """
-    if name not in list_remote_datasets(purpose=purpose):
-        raise ValueError(
-            f"Dataset {name!r} not found. Available datasets are: " + ", ".join(list_remote_datasets(purpose=purpose))
-        )
-
-    dataset_config = _DATASET_KEYS_AND_CONFIGS[name][0]
-    return dataset_config.get_dataset_files()

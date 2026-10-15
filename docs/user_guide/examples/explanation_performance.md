@@ -40,7 +40,7 @@ This will make Parcels use `numpy` functions in the interpolation routines, whic
 
 _Uses Parcels Backend: ChunkCachedArray_
 
-**Best for: large Datasets (more than a few GB) and particles distributed over the entire domain**
+**Best for: large Datasets (more than a few GB) and particles in only a small region of the domain**
 
 If your Dataset is so large that it doesn't fit into memory, you can use the {py:func}`parcels.FieldSet.to_chunk_cached_arrays()`.
 This constructs a cache where individual (dask) chunks of data are stored.
@@ -85,36 +85,7 @@ fieldset.to_windowed_arrays()
  If your particles start at multiple times (e.g. [Delayed starts](./tutorial_delaystart.ipynb)), it's best to do the initial sampling with the FieldSet in Dask mode and only convert to WindowedArrays _after_ the initial sampling.
 ```
 
-## Option 4: use (cached) zarr files
-
-**Best for: large Datasets (more than a few GB) and particles distributed over a small part of the domain**
-
-_Uses Parcels Backend: Zarr_
-
-If your Dataset is too large to fit into memory, but your particles are only distributed over a small part of the domain, it could be efficient to use cached zarr files. This can be done by using the (experimental) `zarr.CacheStore` in combination with the {py:func}`parcels.open_raw_zarr()` function. This will make Parcels only load the chunks that are needed for the particles, and cache these chunks in memory for future use.
-
-```{code-block} python
-source_store = zarr.storage.LocalStore(filenames)
-cache_store = zarr.storage.MemoryStore()
-
-store = CacheStore(
-    store=source_store, cache_store=cache_store, max_size=MAX_CACHE_SIZE
-)
-ds = parcels.open_raw_zarr(store)
-```
-
-### Advantages and disadvantages
-
-| Advantages                                                                                                           | Disadvantages                                                                                                     |
-| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Parcels will only load the chunks that are needed for the particles, which can be much less than the entire Dataset. | The hydrodynamic data will have to be stored in zarr format, which may require additional storage space.          |
-|                                                                                                                      | The fieldset data can't be changed after it is loaded, as dask operations are not supported on the raw zarr data. |
-
-```{note}
-In our performance testing, we have found that using zarr files saved without any compression can be considerably faster than using compressed zarr files.
-```
-
-## Option 5: use Dask
+## Option 4: use Dask
 
 **Best for: large Datasets (more than a few GB) and small ParticleSets (less than a few hundred particles)**
 
@@ -129,7 +100,7 @@ If your Dataset is so large that it doesn't fit into memory, and you have very f
 | Works out-of-the-box | Only performs well for very small ParticleSets |
 
 ```{note}
-The long-term plan for Parcels development is to make this Option 4 work well for all cases. However, this will require significant work on Dask indexing.
+The long-term plan for Parcels development is to make this last option (using Dask) work well for all cases. However, this will require significant work on Dask indexing.
 If you have ideas for how to make Parcels faster, we'd love to hear from you!
 Feel free to [open an issue](https://github.com/Parcels-code/Parcels/issues) or reach out to us on [Zulip](https://clam-community.github.io).
 ```

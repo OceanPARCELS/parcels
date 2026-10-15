@@ -326,7 +326,7 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
 
     Notes
     -----
-    The NEMO model (https://www.nemo-ocean.eu/) is used by a variety of oceanographic institutions around the world.
+    The NEMO model (https://nemo-ocean.eu/) is used by a variety of oceanographic institutions around the world.
     Output from these models may differ subtly in terms of variable names and metadata conventions.
     This function attempts to standardize these differences to create a Parcels FieldSet.
     If you encounter issues with your specific NEMO dataset, please open an issue on the Parcels GitHub repository with details about your dataset.

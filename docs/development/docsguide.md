@@ -15,7 +15,7 @@ TODO: outline functions of the documentation based on resources
 - [Divio Documentation System](https://docs.divio.com/documentation-system/)
 - [PyOpenSci Documentation Guide](https://www.pyopensci.org/python-package-guide/documentation/index.html#)
 - [Write the Docs Guide](https://www.writethedocs.org/guide/)
-- [NumPy Documentation Article](https://labs.quansight.org/blog/2020/03/documentation-as-a-way-to-build-community)
+- [NumPy Documentation Article](https://labs.quansight.org/blog/documentation-as-a-way-to-build-community)
 
 ## Notebook execution
 

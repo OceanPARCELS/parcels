@@ -29,7 +29,9 @@ class BaseGrid(ABC):
     _mesh: FlatMesh | SphericalMesh
 
     @abstractmethod
-    def search(self, z: float, y: float, x: float, ei=None) -> dict[str, tuple[int, float | np.ndarray]]:
+    def search(
+        self, z: float, y: float, x: float, ei=None, ti=None, tau=None
+    ) -> dict[str, tuple[int, float | np.ndarray]]:
         """
         Perform a spatial (and optionally vertical) search to locate the grid element
         that contains a given point (x, y, z).
@@ -49,6 +51,10 @@ class BaseGrid(ABC):
             A previously computed encoded index (e.g., raveled face or cell index). If provided,
             the search will first attempt to validate and reuse it before falling back to
             a global or local search strategy.
+        ti : np.ndarray, optional
+            Time index of each query point, as returned by ``_search_time_index``.
+        tau : np.ndarray, optional
+            Barycentric time coordinate of each query point, as returned by ``_search_time_index``.
         search2D : bool, default=False
             If True, perform only a 2D search (x, y), ignoring the vertical component z.
 

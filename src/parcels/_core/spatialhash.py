@@ -37,8 +37,8 @@ class SpatialHash:
     grid : parcels.XGrid
         Source grid used to construct the hash grid and hash table
 
-    Note
-    ----
+    Notes
+    -----
     Does not currently support queries on periodic elements.
     """
 

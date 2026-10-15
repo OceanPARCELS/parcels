@@ -1,0 +1,35 @@
+name: paper-v4
+on:
+  push:
+    paths: # since the paper doesn't depend on the rest of the repo
+      - docs/paper-v4/**
+      - .github/workflows/paper-v4.yml
+    branches:
+      - "*"
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash -el {0}
+
+permissions: {}
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    name: Paper Draft
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build draft PDF
+        uses: openjournals/openjournals-draft-action@master # zizmor: ignore[unpinned-uses]
+        with:
+          journal: joss
+          paper-path: docs/paper-v4/paper.md
+      - name: Upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: paper
+          path: docs/paper-v4/paper.pdf

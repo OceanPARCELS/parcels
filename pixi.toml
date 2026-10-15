@@ -28,7 +28,7 @@ cftime = ">=1.6.3"
 dask = ">=2025.7.0"
 holoviews = ">=1.22.0" # https://github.com/prefix-dev/rattler-build/issues/2326
 netcdf4 = ">=1.6.0"
-numpy = ">=2.2.0"
+numpy = ">=2.3.0"
 pandas = ">=2.3"
 polars = ">=1.32.0"
 pooch = ">=1.8.0"
@@ -43,22 +43,13 @@ zarr = ">=3.1"
 [dependencies]
 parcels = { path = "." }
 
-[feature.rattler-build.dependencies]
-python = "*"
-git = "*"
-rattler-build = "*"
-
-[feature.rattler-build.tasks]
-get-parcels-alpha-version = { cmd = "python tools/get-parcels-alpha-version.py" }
-build-parcels = { cmd = "rattler-build build --recipe .github/ci/recipe.yaml", description = "Build the Parcels conda package" }
-
-[feature.minimum.dependencies]
+[feature.min-versions.dependencies]
 python = "3.11.*"
 cf_xarray = "0.10.*"
 cftime = "1.6.*"
 dask = "2025.7.*"
 netcdf4 = "1.6.*"
-numpy = "2.2.*"
+numpy = "2.3.*"
 pandas = "2.3.*"
 polars = "1.32.*"
 pooch = "1.8.*"
@@ -96,11 +87,11 @@ tests-notebooks = { cmd = "pytest --nbval-lax docs/user_guide/examples", descrip
 
 [feature.notebooks.dependencies]
 jupyter = "*"
-trajan = "*"
 matplotlib-base = ">=2.0.2"
 gsw = "*"
 py-triangle = "*"
-cmocean = ">=4.0.3,<5"
+cmocean = "*"
+cartopy = "*"
 
 [feature.devtools.dependencies]
 pdbpp = "*"
@@ -136,6 +127,7 @@ sphinx-autobuild = "*"
 sphinxcontrib-mermaid = "*"
 sphinx-design = "*"
 sphinx-autoapi = "*"
+sphinx-notfound-page = "*"
 vale = "*"
 
 [feature.docs.tasks]
@@ -188,13 +180,12 @@ default = { features = [
   "devtools",
 ], solve-group = "main" }
 test = { features = ["test"], solve-group = "main" }
-test-minimum = { features = ["test", "minimum"] }
+test-min-versions = { features = ["test", "min-versions"] }
 test-py311 = { features = ["test", "py311"] }
 test-py313 = { features = ["test", "py313"] }
 test-notebooks = { features = ["test", "notebooks"], solve-group = "main" }
 docs = { features = ["docs", "notebooks"], solve-group = "docs" }
 typing = { features = ["typing"], solve-group = "main" }
-build = { features = ["rattler-build"] }
 
 [pypi-dependencies]
 detect-test-pollution = ">=1.2.0, <2"
