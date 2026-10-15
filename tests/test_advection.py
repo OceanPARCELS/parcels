@@ -24,10 +24,13 @@ from parcels._datasets.structured.generated import (
     peninsula_dataset,
     radial_rotation_dataset,
     simple_UV_dataset,
+    simple_UV_sigma_dataset,
     stommel_gyre_dataset,
 )
 from parcels._datasets.structured.generic import datasets_sgrid
 from parcels.kernels import (
+    RK2,
+    RK4,
     AdvectionDiffusionEM,
     AdvectionDiffusionM1,
     AdvectionEE,
@@ -87,7 +90,7 @@ def periodicBC(particles, fieldset):
 
 @ignore_kernel_warnings
 def test_advection_zonal_periodic():
-    ds = simple_UV_dataset(dims=(2, 2, 2, 2), mesh="flat")
+    ds = simple_UV_dataset(n_times=2, nz=2, ny=2, nx=2, mesh="flat")
     ds["U"].data[:] = 0.1
     ds["lon"].data = np.array([0, 2])
     ds["lat"].data = np.array([0, 2])
@@ -97,6 +100,9 @@ def test_advection_zonal_periodic():
     halo.lon.values = ds.lon.values[1] + 1
     halo.XG.values = ds.XG.values[1] + 2
     ds = xr.concat([ds, halo], dim="XG", data_vars="all")
+    ds = ds.drop_vars("XC").assign_coords(
+        XC=("XC", ds.XG.values + 0.5, {"axis": "X"})
+    )  # update cell centers to adjust for added halo
 
     fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
 
@@ -230,6 +236,25 @@ def test_length1dimensions(u_value, x_slice, v_value, y_slice, w_value, z_slice)
     np.testing.assert_allclose(np.array([p.y - y0 for p in pset]), 4 * v_value, atol=1e-5)
     if w_value:
         np.testing.assert_allclose(np.array([p.z - z0 for p in pset]), 4 * w_value, atol=1e-5)
+
+
+@pytest.mark.parametrize("npart", [1, 2, 3, 10])
+@pytest.mark.parametrize("integrator", [RK2, RK4])
+def test_advection_with_integrators_singlefield(npart, integrator):
+    """Test that the RK2 and RK4 integrators don't work with a single field (e.g. U)"""
+    ds = simple_UV_dataset(mesh="flat").rename({"U": "T"})
+    fset = parcels.FieldSet.from_sgrid_conventions(ds, mesh="flat")
+
+    pset = parcels.ParticleSet(fset, x=np.zeros(npart), y=np.arange(npart))
+
+    def rhs(fieldset, t, z, y, x, particles):
+        return fieldset.T[t, z, y, x, particles]
+
+    def SingleField(particles, fieldset):
+        integrator(particles, fieldset, rhs)
+
+    with pytest.raises(TypeError):
+        pset.execute(SingleField, runtime=np.timedelta64(1, "s"), dt=np.timedelta64(1, "s"))
 
 
 def test_radialrotation(npart=10):
@@ -508,3 +533,25 @@ def test_mitgcm():
         1952691.93845841,
     ]
     np.testing.assert_allclose(pset.y, lat_v3, atol=1)
+
+
+@pytest.mark.filterwarnings("ignore:Time-varying \\(4D\\) z coordinates are experimental")
+def test_advection_on_moving_sigma_grid_keeps_depth():
+    """With uniform u and w = 0, particles keep their depth while the sigma levels move past them."""
+    n_snapshots, nz, ny, nx = 3, 6, 5, 5
+    lon = simple_UV_dataset(n_times=n_snapshots, nz=nz, ny=ny, nx=nx, mesh="flat")["lon"].values
+    x_centres = lon - 0.5 * (lon[1] - lon[0])  # LOW padding: cell centre i lies between nodes i - 1 and i
+    bottom_depth = np.broadcast_to(20.0 + 5e-6 * x_centres, (ny, nx))
+    eta = np.stack([np.broadcast_to(np.sin(snapshot + 1e-6 * x_centres), (ny, nx)) for snapshot in range(n_snapshots)])
+    ds = simple_UV_sigma_dataset(n_snapshots, nz, ny, nx, bottom_depth, eta)
+    u0 = 0.5
+    ds["U"].values[:] = u0
+    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+
+    x0, z0 = 0.0, np.array([2.0, 8.0, 15.0])
+    pset = ParticleSet(fieldset, x=np.full(z0.size, x0), y=np.zeros(z0.size), z=z0)
+    pset.execute(AdvectionRK4_3D, runtime=np.timedelta64(2, "h"), dt=np.timedelta64(300, "s"), verbose_progress=False)
+
+    np.testing.assert_array_equal(pset.z, z0)
+    np.testing.assert_allclose(pset.x, x0 + u0 * 7200.0)
+    assert np.all(pset.state < StatusCode.Error)

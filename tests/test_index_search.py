@@ -3,6 +3,7 @@ import pytest
 
 from parcels._core.fieldset import FieldSet
 from parcels._core.index_search import (
+    _search_1d_array,
     _search_indices_curvilinear_2d,
     curvilinear_point_in_cell,
     uxgrid_point_in_cell,
@@ -16,6 +17,13 @@ def field_cone():
     ds = datasets["2d_left_unrolled_cone"]
     fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
     return fieldset.data_g
+
+
+def test_multi_array_errors_in_search_1d_array():
+    arr = np.array([[1, 2, 3]])
+    x = np.array([[1], [2]])
+    with pytest.raises(ValueError):
+        _search_1d_array(arr, x)
 
 
 def test_grid_indexing_fpoints(field_cone):

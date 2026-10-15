@@ -513,10 +513,10 @@ def croco_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.D
             node_dimensions=("lon", "lat"),
             node_coordinates=("lon", "lat"),
             face_dimensions=(
-                sgrid.FaceNodePadding("xi_u", "xi_rho", sgrid.Padding.HIGH),
-                sgrid.FaceNodePadding("eta_v", "eta_rho", sgrid.Padding.HIGH),
+                sgrid.FaceNodePadding("xi_u", "xi_rho", sgrid.Padding.NONE),
+                sgrid.FaceNodePadding("eta_v", "eta_rho", sgrid.Padding.NONE),
             ),
-            vertical_dimensions=(sgrid.FaceNodePadding("s_rho", "depth", sgrid.Padding.HIGH),),
+            vertical_dimensions=(sgrid.FaceNodePadding("s_rho", "depth", sgrid.Padding.NONE),),
         ).to_attrs(),
     )
 

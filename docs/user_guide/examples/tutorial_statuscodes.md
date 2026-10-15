@@ -63,7 +63,7 @@ Let's add the `KeepInOcean` Kernel to an particle simulation where particles mov
 import numpy as np
 from parcels._datasets.structured.generated import simple_UV_dataset
 
-ds = simple_UV_dataset(dims=(1, 2, 5, 4), mesh="flat")
+ds = simple_UV_dataset(n_times=1, nz=2, ny=5, nx=4, mesh="flat")
 
 dx, dy = 1.0 / len(ds.XG), 1.0 / len(ds.YG)
 

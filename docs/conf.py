@@ -44,6 +44,7 @@ extensions = [
     "sphinxcontrib.mermaid",
     "sphinx_design",
     "autoapi.extension",
+    "notfound.extension",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

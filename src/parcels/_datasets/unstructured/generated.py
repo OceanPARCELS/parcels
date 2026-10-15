@@ -165,6 +165,28 @@ def _build_delaunay_grid(nx, lon_range, lat_range):
     return uxgrid
 
 
+def _build_triangulated_lattice_grid(nx, x_range, y_range):
+    """Build a flat UxGrid by splitting each cell of a regular nx-by-nx node lattice over x_range by y_range (in meters) into two triangles."""
+    X, Y = np.meshgrid(np.linspace(x_range[0], x_range[1], nx), np.linspace(y_range[0], y_range[1], nx))
+    node_x, node_y = X.ravel(), Y.ravel()
+    i_grid, j_grid = np.meshgrid(np.arange(nx - 1), np.arange(nx - 1))
+    i, j = i_grid.ravel(), j_grid.ravel()
+    sw = (j * nx) + i
+    se = sw + 1
+    nw = sw + nx
+    ne = nw + 1
+
+    tri1 = np.stack((sw, ne, nw), axis=-1)
+    tri2 = np.stack((sw, se, ne), axis=-1)
+    face_node_connectivity = np.concatenate((tri1, tri2))
+
+    uxgrid = ux.Grid.from_topology(node_lon=node_x, node_lat=node_y, face_node_connectivity=face_node_connectivity)
+    uxgrid.node_lon.values[:] = node_x
+    uxgrid.node_lat.values[:] = node_y
+    uxgrid.attrs["Conventions"] = "UGRID-1.0"
+    return uxgrid
+
+
 def _wrap_uvw_dataset(uxgrid, u, v, w, zc, zf, time, uv_dim, uv_location, description):
     """Wrap (u, v, w) numpy arrays into a UxDataset following Parcels' UGRID conventions.
 
@@ -342,3 +364,40 @@ def solid_body_rotation_3d_node_centered(nx=40, nz=10, omega=2.0 * math.pi / 360
     w = np.full((1, zf.size, uxgrid.n_node), w0, dtype=np.float64)
 
     return _wrap_uvw_dataset(uxgrid, u, v, w, zc, zf, time, "n_node", "node", "3D solid-body rotation")
+
+
+def sigma_coordinate_lattice_dataset(nx, x_range, y_range, nz, bottom_depth, eta=None, start_time="2000-01-01"):
+    """Zero-velocity UGRID dataset on an nx-by-nx lattice: nz sigma interfaces from the surface (depth -eta) to bottom_depth (scalar or (x, y), meters); eta is None or (t, x, y), hourly from start_time."""
+    uxgrid = _build_triangulated_lattice_grid(nx, x_range, y_range)
+    sigma = np.linspace(0.0, 1.0, nz)
+    if bottom_depth is None or np.ndim(bottom_depth) not in (0, 2):
+        raise ValueError(
+            f"bottom_depth must be a scalar or an (x, y) array, got {type(bottom_depth).__name__} with ndim {np.ndim(bottom_depth)}"
+        )
+
+    if eta is None:
+        if np.ndim(bottom_depth) == 0:
+            zf = sigma * bottom_depth  # (nz,)
+        elif np.ndim(bottom_depth) == 2:
+            zf = (sigma * (bottom_depth.T.ravel()[:, np.newaxis])).T  # (nz, n_node)
+            zf = zf[np.newaxis, :, :]  # (1, nz, n_node)
+    else:
+        total_depth = np.swapaxes(bottom_depth + eta, 1, 2).reshape(eta.shape[0], -1)
+        eta_nodes = np.swapaxes(eta, 1, 2).reshape(eta.shape[0], -1)
+        zf = sigma[np.newaxis, :, np.newaxis] * total_depth[:, np.newaxis, :] - eta_nodes[:, np.newaxis, :]
+
+    n_times = 1 if eta is None else eta.shape[0]
+    time = xr.date_range(start_time, periods=n_times, freq="1h")
+    zc = 0.5 * (zf[:-1] + zf[1:]) if zf.ndim == 1 else 0.5 * (zf[:, :-1] + zf[:, 1:])
+
+    if zf.ndim == 1:
+        vertical_coords: dict[str, tuple] = {"zf": ("zf", zf), "zc": ("zc", zc)}
+    else:
+        vertical_coords = {"zf": (("time", "zf", "n_node"), zf), "zc": (("time", "zc", "n_node"), zc)}
+
+    velocity_dims = ("time", "zf", "n_node")
+    velocity_shape = (n_times, nz, uxgrid.n_node)
+    velocity_attrs = dict(units="m/s", location="node", mesh="triangulated_lattice", Conventions="UGRID-1.0")
+    velocities = {name: (velocity_dims, np.zeros(velocity_shape), velocity_attrs) for name in ("U", "V", "W")}
+
+    return ux.UxDataset(xr.Dataset(velocities, coords={"time": time, **vertical_coords}), uxgrid=uxgrid)

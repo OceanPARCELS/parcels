@@ -42,6 +42,8 @@ def _search_1d_array(
         Barycentric coordinate.
     """
     # TODO v4: We probably rework this to deal with 0D arrays before this point (as we already know field dimensionality)
+    if arr.ndim > 1:
+        raise ValueError(f"Expected 1D array for {arr}, got {arr.ndim}D array")
     if len(arr) < 2:
         return np.zeros(shape=x.shape, dtype=np.int32), np.zeros_like(x)
     index = np.clip(np.searchsorted(arr, x, side="left") - 1, 0, len(arr) - 2)
@@ -60,6 +62,45 @@ def _search_1d_array(
     index = np.where(x > arr[-1], RIGHT_OUT_OF_BOUNDS, index)
 
     return np.atleast_1d(index), np.atleast_1d(bcoord)
+
+
+def _search_1d_columns(columns: np.ndarray, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Searches for particle locations in per-particle 1D columns and returns barycentric coordinate along dimension.
+
+    Row-wise counterpart of ``_search_1d_array``: particle p searches only its own column ``columns[p]``.
+
+    Assumptions:
+    - each column is strictly monotonically increasing.
+
+    Parameters
+    ----------
+    columns : np.ndarray
+        2D array of shape (n_particles, n_levels), one column per particle.
+    x : np.ndarray
+        Position of each particle along its column, shape (n_particles,).
+
+    Returns
+    -------
+    array of int
+        Index of the element just before the position x in each column. Note that this index is -2 if the index is left out of bounds and -1 if the index is right out of bounds.
+    array of float
+        Barycentric coordinate.
+    """
+    n_levels = columns.shape[1]
+    if n_levels < 2:
+        return np.zeros(shape=x.shape, dtype=np.int32), np.zeros_like(x)
+    # The number of column entries strictly below x equals np.searchsorted(column, x, side="left")
+    index = np.clip((columns < x[:, None]).sum(axis=1) - 1, 0, n_levels - 2)
+    rows = np.arange(columns.shape[0])
+    lower = columns[rows, index]
+    upper = columns[rows, index + 1]
+    bcoord = (x - lower) / (upper - lower)
+
+    index = np.where(x < columns[:, 0], LEFT_OUT_OF_BOUNDS, index)
+    index = np.where(x > columns[:, -1], RIGHT_OUT_OF_BOUNDS, index)
+
+    return index, bcoord
 
 
 def _search_time_index(field: Field, time: np.ndarray):

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+import xarray as xr
 from dask import is_dask_collection
 
 from parcels._core.basegrid import BaseGrid
-from parcels._core.index_search import GRID_SEARCH_ERROR, _search_1d_array, uxgrid_point_in_cell
+from parcels._core.index_search import GRID_SEARCH_ERROR, _search_1d_array, _search_1d_columns, uxgrid_point_in_cell
 from parcels._core.mesh import SphericalMesh, get_mesh
+from parcels._core.warnings import FieldSetWarning
 
 if TYPE_CHECKING:
     import uxarray as ux
@@ -32,9 +35,9 @@ class UxGrid(BaseGrid):
         grid : ux.grid.Grid
             The uxarray grid object containing the unstructured grid data.
         z : ux.UxDataArray
-            A 1D array of vertical coordinates (depths) associated with the layer interface heights (not the mid-layer depths).
-            While uxarray allows nz to be spatially and temporally varying, the parcels.UxGrid class considers the case where
-            the vertical coordinate is constant in time and space. This implies flat bottom topography and no moving ALE vertical grid.
+            Vertical coordinates (depths) of the layer interface heights (not the mid-layer depths). Either a 1D array,
+            constant in time and space (flat bottom topography, no moving vertical grid), or a 3D array with dims
+            ("time", "zf", "n_node"), varying in time and across the mesh nodes.
         mesh : str
             The type of mesh used for the grid. Either "flat" or "spherical".
         """
@@ -45,8 +48,20 @@ class UxGrid(BaseGrid):
         self.uxgrid = grid
         if not isinstance(z, ux.UxDataArray):
             raise TypeError("z must be an instance of ux.UxDataArray")
-        if z.ndim != 1:
-            raise ValueError("z must be a 1D array of vertical coordinates")
+        if z.ndim not in (1, 3):
+            raise ValueError(f"z must be a 1D or 3D array of vertical coordinates, got {z.ndim}D")
+        if z.ndim == 3 and z.dims != ("time", "zf", "n_node"):
+            raise ValueError(f"A 3D z must have dims ('time', 'zf', 'n_node'), got {z.dims}")
+        if z.ndim == 3:
+            warnings.warn(
+                "Time-varying (3D) z coordinates are experimental and may cause significant memory overhead that "
+                f"leads to OOM errors. This z coordinate has sizes {dict(z.sizes)} ({z.nbytes / 1e9:.3g} GB). "
+                "Assumptions: z is defined at the layer interfaces ('zf') on the mesh nodes ('n_node') and is strictly "
+                "increasing along 'zf'; each particle's z column is interpolated barycentrically from its face's "
+                "nodes and linearly in time between z snapshots.",
+                FieldSetWarning,
+                stacklevel=4,
+            )
         self.z = z
         self._mesh = get_mesh(mesh)
         self._spatialhash = None
@@ -76,6 +91,8 @@ class UxGrid(BaseGrid):
             raise ValueError(f"Axis {axis!r} is not part of this grid. Available axes: {self.axes}")
 
         if axis == "Z":
+            if self.z.ndim == 3:
+                return self.z.sizes["zf"]
             return len(self.z.values)
         elif axis == "FACE":
             return self.uxgrid.n_face
@@ -87,7 +104,7 @@ class UxGrid(BaseGrid):
             return self._mesh.deg2m
         return 1.0
 
-    def search(self, z, y, x, ei=None, tol=1e-6):
+    def search(self, z, y, x, ei=None, ti=None, tau=None, tol=1e-6):
         """
         Search for the grid cell (face) and vertical layer that contains the given points.
 
@@ -105,14 +122,18 @@ class UxGrid(BaseGrid):
             TO BE IMPLEMENTED : If provided, we'll check
             if the points are within the faces specified by these indices. For cells where the particles
             are not found, a nearest neighbor search will be performed. As a last resort, the spatial hash will be used.
+        ti : np.ndarray, optional
+            Time index of each point, as returned by ``_search_time_index``. Required when z is 3D; selects the
+            earlier of the two z snapshots (``ti`` and ``ti + 1``) that are linearly interpolated with ``tau``.
+        tau : np.ndarray, optional
+            Barycentric time coordinate of each point, as returned by ``_search_time_index``. Required when z is 3D;
+            used for linear interpolation of the z coordinate for the construction of a particle's column.
         tol : float, optional
             Tolerance for barycentric coordinate checks. Default is 1e-6.
         """
         x = np.asarray(x, dtype=np.float32)
         y = np.asarray(y, dtype=np.float32)
         z = np.asarray(z, dtype=np.float32)
-
-        zi, zeta = _search_1d_array(self.z.values, z)
 
         if np.any(ei):
             indices = self.unravel_index(ei)
@@ -134,4 +155,41 @@ class UxGrid(BaseGrid):
             coords[zero_indices, :] = coords_q
             fi[zero_indices] = face_ids_q
 
+        if self.z.ndim == 3:
+            zi, zeta = self._search_time_varying_z(z, fi, coords, ti, tau)
+        else:
+            zi, zeta = _search_1d_array(self.z.values, z)
+
         return {"Z": {"index": zi, "bcoord": zeta}, "FACE": {"index": fi, "bcoord": coords}}
+
+    def _search_time_varying_z(self, z, fi, coords, ti, tau):
+        """Vertical search of each particle in the z column interpolated barycentrically from the nodes of its face,
+        using temporal linear interpolation between the snapshots ti and ti + 1.
+        """
+        found = fi >= 0
+        cols_ti = self.z.isel(
+            time=xr.DataArray(np.broadcast_to(ti, fi.shape)[found], dims="points"),
+            n_node=xr.DataArray(self.uxgrid.face_node_connectivity[fi[found], :].values, dims=("points", "nodes")),
+            ignore_grid=True,
+        ).compute()
+
+        if self.z.shape[0] == 1:
+            node_columns = cols_ti
+        else:
+            cols_tnext = self.z.isel(
+                time=xr.DataArray(np.broadcast_to(ti + 1, fi.shape)[found], dims="points"),
+                n_node=xr.DataArray(self.uxgrid.face_node_connectivity[fi[found], :].values, dims=("points", "nodes")),
+                ignore_grid=True,
+            ).compute()
+
+            tau_points = xr.DataArray(np.broadcast_to(tau, fi.shape)[found], dims="points")
+            node_columns = (1 - tau_points) * cols_ti + tau_points * cols_tnext
+
+        bcoords = xr.DataArray(coords[found], dims=("points", "nodes"))
+        # Particles outside the mesh are given a NaN z column for vertical searching
+        columns = np.full((fi.size, self.z.sizes["zf"]), np.nan)
+        columns[found] = xr.dot(node_columns, bcoords, dim="nodes").values
+        zi, zeta = _search_1d_columns(columns, z)
+
+        # Particles outside the mesh are given a 0 vertical index and a NaN vertical barycentric coordinate
+        return np.where(found, zi, 0), np.where(found, zeta, np.nan)

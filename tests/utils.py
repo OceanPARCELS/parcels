@@ -77,7 +77,7 @@ def create_fieldset_global(xdim=200, ydim=100):
 def create_fieldset_zeros_conversion(mesh="spherical", xdim=200, ydim=100) -> FieldSet:
     """Zero velocity field with lat and lon determined by a conversion factor."""
     mesh_conversion = 1 / 1852.0 / 60 if mesh == "spherical" else 1
-    ds = simple_UV_dataset(dims=(2, 1, ydim, xdim), mesh=mesh)
+    ds = simple_UV_dataset(n_times=2, nz=1, ny=ydim, nx=xdim, mesh=mesh)
     ds["lon"].data = np.linspace(-1e6 * mesh_conversion, 1e6 * mesh_conversion, xdim)
     ds["lat"].data = np.linspace(-1e6 * mesh_conversion, 1e6 * mesh_conversion, ydim)
     return FieldSet.from_sgrid_conventions(ds, mesh=mesh)
@@ -229,7 +229,7 @@ def create_lonlat_grid(grid_type, face_deg, centre=(0.0, 0.0), n=8, mesh="spheri
     if grid_type == "uxgrid":
         grid = create_uxgrid_from_triangulation(nodes[:, 0], nodes[:, 1], faces, mesh=mesh)
     else:
-        ds = simple_UV_dataset(dims=(2, 2, n + 1, n + 1), mesh=mesh).assign_coords(
+        ds = simple_UV_dataset(n_times=2, nz=2, ny=n + 1, nx=n + 1, mesh=mesh).assign_coords(
             lon=(("YG", "XG"), grid_lon), lat=(("YG", "XG"), grid_lat)
         )
         grid = FieldSet.from_sgrid_conventions(ds, mesh=mesh).U.grid

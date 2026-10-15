@@ -11,13 +11,15 @@ from re_assert import Matches
 
 import parcels.tutorial
 import tests
-from parcels import ParticleFile, ParticleSet, convert, open_raw_zarr
+from parcels import ParticleFile, ParticleSet, convert
 from parcels._core.fieldset import FieldSet, IncompatibleMeshesException, _datetime_to_msg
 from parcels._core.mesh import SphericalMesh
 from parcels._core.model import _default_vector_field_components
+from parcels._datasets.structured.generated import simple_UV_sigma_dataset
 from parcels._datasets.structured.generic import datasets as datasets_structured
 from parcels._datasets.structured.generic import datasets_sgrid
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
+from parcels._sgrid.accessor import SGridDatasetInconsistency
 
 ds = datasets_structured["ds_2d_left"]
 
@@ -343,6 +345,16 @@ def test_fieldset_from_sgrid_conventions(ds_name):
     assert len(fieldset.fields) > 0
 
 
+@pytest.mark.parametrize("face_dim", ["face_dimension1", "face_dimension2", "vertical_dimensions_dim2"])
+def test_fieldset_from_sgrid_conventions_inconsistent_padding(face_dim):
+    # HIGH padding requires face and node dimensions to be the same size
+    ds = datasets_sgrid["ds_2d_padded_high"]
+    ds = ds.isel({face_dim: slice(1, None)})  # plain xarray isel, so face dim is one shorter than the node dim
+
+    with pytest.raises(SGridDatasetInconsistency, match=f"face dimension {face_dim!r}"):
+        FieldSet.from_sgrid_conventions(ds, mesh="flat")
+
+
 def test_fieldset_skip_field_data_validation():
     ds = datasets_structured["ds_2d_left"]
     ds["U_A_grid"][:] = np.nan
@@ -428,22 +440,6 @@ def test_fieldset_add_error_on_duplicate_context_values():
 
     with pytest.raises(ValueError, match="context value names in common.*'kh'"):
         fset1 + fset2
-
-
-@tests.mark.zarr_filterwarning_consolidated_metadata
-@pytest.mark.parametrize("skip", [True, False])
-def test_zarr_warning_on_fieldset_creation(skip, tmp_path):
-    """Test that creating a FieldSet from a Zarr-backed dataset raises a warning about potential backend changes."""
-    ds = parcels.tutorial.open_dataset("CopernicusMarine_data_for_Argo_tutorial/data")
-    ds = convert.copernicusmarine_to_sgrid(fields={"U": ds["uo"], "V": ds["vo"]})
-    path = tmp_path / "ds.zarr"
-    ds.to_zarr(path)
-    ds_zarr = open_raw_zarr(path)
-    if not skip:
-        with pytest.warns(UserWarning, match="Changing a Zarr-backed dataset"):
-            FieldSet.from_sgrid_conventions(ds_zarr, skip_field_data_validation=skip)
-    else:
-        FieldSet.from_sgrid_conventions(ds_zarr, skip_field_data_validation=skip)
 
 
 def test_fieldset_add_context_values():
@@ -537,26 +533,24 @@ time interval: (np.datetime64('2000-01-02T12:00:00.000000000'), np.datetime64('2
     actual = io.getvalue()
     assert actual == expected
 
-    path = tmp_path / "ds.zarr"
-    ds_fset.to_zarr(path)
-    ds_zarr = open_raw_zarr(path)
-    fieldset = FieldSet.from_sgrid_conventions(ds_zarr, skip_field_data_validation=True)
-
-    io = StringIO()
-    expected = """\
-| Name   | Type        |   Grid number | Interp method / value   | Parcels backend   |
-|:-------|:------------|--------------:|:------------------------|:------------------|
-| U      | Field       |             0 | XLinear(...)            | Zarr              |
-| V      | Field       |             0 | XLinear(...)            | Zarr              |
-| W      | Field       |             0 | XLinear(...)            | Zarr              |
-| UV     | VectorField |             0 | CGrid_Velocity(...)     | -                 |
-| UVW    | VectorField |             0 | CGrid_Velocity(...)     | -                 |
-
-mesh: SphericalMesh(radius=6366707.019493707)
-time interval: (np.datetime64('2000-01-02T12:00:00.000000000'), np.datetime64('2000-01-12T12:00:00.000000000'))
-"""
-    fieldset.describe(io)
-    actual = io.getvalue()
-    assert actual == expected
-
     # TODO: Add test for the ChunkedArray backend (can also refactor this test at the same time)
+
+
+@pytest.mark.filterwarnings("ignore:Time-varying \\(4D\\) z coordinates are experimental")
+@pytest.mark.parametrize(
+    "n_snapshots",
+    [
+        pytest.param(1, id="single_snapshot_4d_z"),
+        pytest.param(3, id="time_varying_4d_z"),
+    ],
+)
+def test_fieldset_from_simple_UV_sigma_dataset(n_snapshots):
+    nz, ny, nx = 4, 6, 5
+    eta = np.broadcast_to(np.linspace(-1.0, 1.0, n_snapshots)[:, np.newaxis, np.newaxis], (n_snapshots, ny, nx))
+    ds = simple_UV_sigma_dataset(n_snapshots, nz, ny, nx, np.full((ny, nx), 50.0), eta)
+    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+
+    depth = fieldset.U.grid._ds["depth"]
+    assert depth.dims == ("time", "depth", "YC", "XC")
+    assert depth.sizes["time"] == n_snapshots
+    assert fieldset.U.grid.get_axis_dim("Z") == nz

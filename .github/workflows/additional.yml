@@ -26,7 +26,7 @@ jobs:
           minimum-versions validate \
           --policy=.github/ci/policy.yaml \
           --manifest-path=./pixi.toml \
-          pixi:test-minimum
+          pixi:test-min-versions
 
   linkcheck:
     name: pixi run docs-linkcheck

@@ -8,8 +8,11 @@ import parcels._datasets.remote as _parcels_remote
 import parcels.tutorial
 from parcels import (
     FieldSet,
+    UxGrid,
     convert,
 )
+from parcels._core.model import UnstructuredModelData
+from parcels._datasets.unstructured.generated import sigma_coordinate_lattice_dataset
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
 from parcels.interpolators import (
     UxConstantFaceConstantZC,
@@ -204,3 +207,39 @@ def test_nestedgrids_triangulation_spherical_search():
         f"grid search failed for {n_lost} of {len(x)} particles; e.g. (lon, lat)="
         f"{np.column_stack((x, y))[face < 0][:3].tolist()}"
     )
+
+
+SLOPING_BOTTOM_DEPTH = np.broadcast_to(np.linspace(20.0, 60.0, 5)[:, np.newaxis], (5, 5))
+RISING_ETA = np.broadcast_to(np.linspace(-1.0, 1.0, 3)[:, np.newaxis, np.newaxis], (3, 5, 5))
+
+
+@pytest.mark.filterwarnings("ignore:Time-varying \\(3D\\) z coordinates are experimental")
+@pytest.mark.parametrize(
+    "eta, expected_n_snapshots",
+    [
+        pytest.param(None, 1, id="single_snapshot_3d_z"),
+        pytest.param(RISING_ETA, 3, id="time_varying_3d_z"),
+    ],
+)
+def test_fieldset_from_sigma_coordinate_dataset(eta, expected_n_snapshots):
+    nz = 4
+    ds = sigma_coordinate_lattice_dataset(5, (0.0, 4e3), (0.0, 4e3), nz, SLOPING_BOTTOM_DEPTH, eta=eta)
+    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="flat")
+
+    assert fieldset.U.grid.z.dims == ("time", "zf", "n_node")
+    assert fieldset.U.grid.z.sizes["time"] == expected_n_snapshots
+    assert fieldset.U.grid.get_axis_dim("Z") == nz
+    for field in (fieldset.U, fieldset.V, fieldset.W):
+        assert isinstance(field.interp_method, UxLinearNodeLinearZF)
+
+
+@pytest.mark.filterwarnings("ignore:Time-varying \\(3D\\) z coordinates are experimental")
+def test_unstructured_model_data_rejects_z_with_different_time_coordinate():
+    ds = sigma_coordinate_lattice_dataset(5, (0.0, 4e3), (0.0, 4e3), 4, SLOPING_BOTTOM_DEPTH, RISING_ETA)
+    ds_one_day_later = sigma_coordinate_lattice_dataset(
+        5, (0.0, 4e3), (0.0, 4e3), 4, SLOPING_BOTTOM_DEPTH, RISING_ETA, start_time="2000-01-02"
+    )
+    grid_with_later_z = UxGrid(ds.uxgrid, z=ds_one_day_later.coords["zf"], mesh="flat")
+
+    with pytest.raises(ValueError, match="same time coordinate"):
+        UnstructuredModelData(ds, grid_with_later_z, {})

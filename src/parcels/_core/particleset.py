@@ -19,7 +19,9 @@ from parcels._core.utils.time import (
     float_to_datelike,
     timedelta_to_float,
 )
+from parcels._core.uxgrid import UxGrid
 from parcels._core.warnings import ParticleSetWarning
+from parcels._core.xgrid import XGrid
 from parcels._logger import logger
 
 __all__ = ["ParticleSet"]
@@ -82,6 +84,14 @@ class ParticleSet:
         if z is None:
             minz = None
             for field in self.fieldset.fields.values():
+                has_time_varying_z = (isinstance(field.grid, UxGrid) and field.grid.z.ndim == 3) or (
+                    isinstance(field.grid, XGrid) and "Z" in field.grid.axes and field.grid._ds["depth"].ndim == 4
+                )
+                if has_time_varying_z:
+                    raise ValueError(
+                        f"Field {field.name!r} has a time-varying vertical grid, so there is no default "
+                        "particle.z. Pass the particle vertical start locations explicitly with `z`."
+                    )
                 for depth in field.grid.depth:
                     if minz is None or np.abs(depth) < np.abs(minz):
                         minz = depth

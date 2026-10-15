@@ -9,19 +9,24 @@ import xarray as xr
 import parcels
 
 DIR = "/storage/shared/oceanparcels/input_data/MatroosWaddenSea/DCSMv7_harmonie"
+
+XR_MFDATASET_OPTIONS = {
+    "combine": "nested",
+    "concat_dim": "time",
+    "data_vars": "minimal",
+    "coords": "minimal",
+    "compat": "override",
+    "join": "override",
+    "parallel": True,
+    "chunks": {"time": 1},
+}
+
 # %% Open flow files
 files = sorted(glob.glob(f"{DIR}/flow/dcsm_fm100m_harmonie_*"))
 
 ds = xr.open_mfdataset(
     files,
-    combine="nested",
-    concat_dim="time",
-    data_vars="minimal",
-    coords="minimal",
-    compat="override",
-    join="override",
-    parallel=True,
-    chunks={"time": 1},
+    **XR_MFDATASET_OPTIONS,
 )
 
 uxgrid = ux.Grid.from_topology(
@@ -50,14 +55,7 @@ files = sorted(glob.glob(f"{DIR}/waves/swan_kuststrook_harmonie_*.nc"))
 
 ds = xr.open_mfdataset(
     files,
-    combine="nested",
-    concat_dim="time",
-    data_vars="minimal",
-    coords="minimal",
-    compat="override",
-    join="override",
-    parallel=True,
-    chunks={"time": 1},
+    **XR_MFDATASET_OPTIONS,
 )
 Us = 2 * np.pi**3 * ds["wave_height_hm0"] ** 2 / (ds["wave_period_tm10"] ** 3 * 9.81)
 ds["Us"] = Us * np.cos(ds["wave_dir_th0"] * np.pi / 180)
@@ -93,8 +91,6 @@ fieldset += fieldset_waves
 
 # %% Add wind to the fieldset
 
-startdate = np.datetime64("2025-11-01T00:00:00")
-enddate = np.datetime64("2025-12-01T00:00:00")
 ds = copernicusmarine.open_dataset(
     dataset_id="cmems_obs-wind_glo_phy_my_l4_0.125deg_PT1H",
     variables=["eastward_wind", "northward_wind"],
@@ -102,8 +98,8 @@ ds = copernicusmarine.open_dataset(
     maximum_longitude=8,
     minimum_latitude=51,
     maximum_latitude=55,
-    start_datetime=np.datetime_as_string(startdate, unit="s"),
-    end_datetime=np.datetime_as_string(enddate, unit="s"),
+    start_datetime="2025-11-01T00:00:00",
+    end_datetime="2025-12-01T00:00:00",
 )
 ds = parcels.convert.copernicusmarine_to_sgrid(
     fields={
@@ -111,13 +107,12 @@ ds = parcels.convert.copernicusmarine_to_sgrid(
         "northward_wind": ds["northward_wind"],
     }
 )
-ds.load()  # Data is mall enough to load into memory
 fieldset_wind = parcels.FieldSet.from_sgrid_conventions(
     ds, vector_fields={"UVWind": ("eastward_wind", "northward_wind")}
 )
 fieldset += fieldset_wind
 
-fieldset = fieldset.to_windowed_arrays()
+fieldset = fieldset.to_chunk_cached_arrays()
 fieldset.describe()
 
 # %% Create the simulation
@@ -180,6 +175,7 @@ def DeleteAnyError(particles, fieldset):
     particles[any_error].state = parcels.StatusCode.Delete
 
 
+@parcels.validate_kernel
 def AdvectionRK2(particles, fieldset):  # pragma: no cover
     """Advection of particles using second-order Runge-Kutta integration."""
     (u1, v1) = fieldset.UV[particles]

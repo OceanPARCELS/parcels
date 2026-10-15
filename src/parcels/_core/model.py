@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Hashable, Sequence
 from typing import TYPE_CHECKING, Any, Self
 
 import cf_xarray  # noqa: F401
 import xarray as xr
-import zarr
 from dask import is_dask_collection
 
 import parcels._sgrid as sgrid
@@ -26,6 +24,7 @@ from parcels._core.xgrid import (
 )
 from parcels._logger import logger
 from parcels._python import NOTSET, NotSetType
+from parcels._sgrid.accessor import assert_metadata_ds_consistency
 from parcels.interpolators import (
     CGrid_Velocity,
     Ux_Velocity,
@@ -164,13 +163,6 @@ def preprocess_sgrid_model_data(ds: xr.Dataset) -> xr.Dataset:
 
 
 def validate_field_data(ds: xr.Dataset) -> xr.Dataset:
-    if any(isinstance(da.variable._data, zarr.Array) for da in ds.data_vars.values()):
-        warnings.warn(
-            "Changing a Zarr-backed dataset. This may convert the Parcels backend to NumPy. "
-            "If you want to keep the Zarr backend, please use `skip_field_data_validation=True` when creating the FieldSet.",
-            UserWarning,
-            stacklevel=2,
-        )
     return ds.fillna(0)
 
 
@@ -265,6 +257,8 @@ class StructuredModelData(ModelData):
         #     ds["lon"] = ds[node_dimensions[0]]
         #     ds["lat"] = ds[node_dimensions[1]]
 
+        assert_metadata_ds_consistency(ds, ds.sgrid.metadata)
+
         vector_fields = resolve_vector_fields(ds, vector_fields)
         assert_valid_vector_fields(ds, vector_fields)
 
@@ -358,6 +352,9 @@ class UnstructuredModelData(ModelData):
 
         if not isinstance(grid, UxGrid):
             raise ValueError(f"Expected `grid` to be a Parcels UxGrid object. Got {type(grid)}.")
+
+        if grid.z.ndim == 3 and not grid.z["time"].equals(data["time"]):
+            raise ValueError("A time-varying (3D) z must have the same time coordinate as `data`.")
 
         self.data = data
         self.grid = grid
