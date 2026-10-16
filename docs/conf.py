@@ -517,6 +517,7 @@ epub_exclude_files = ["search.html"]
 myst_heading_anchors = 4
 
 myst_enable_extensions = ["substitution", "amsmath", "dollarmath"]
+myst_substitutions = {"version": os.environ.get("READTHEDOCS_VERSION_NAME", version)}
 
 # -- Options for MyST-nb --------------------------------------------------
 nb_execution_mode = "cache"
