@@ -7,8 +7,8 @@ on:
   pull_request:
 
 concurrency:
-  group: branch-${{ github.head_ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -98,9 +98,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis/
-          key: cache-hypothesis-${{ runner.os }}-${{ github.run_id }}
+          key: cache-hypothesis-${{ runner.os }}-${{ matrix.pixi-environment }}-${{ github.run_id }}
           restore-keys: |
-            cache-hypothesis-${{ runner.os }}-
+            cache-hypothesis-${{ runner.os }}-${{ matrix.pixi-environment }}-
       - name: Unit test
         id: unit-test
         run: |
@@ -112,7 +112,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis/
-          key: cache-hypothesis-${{ runner.os }}-${{ github.run_id }}
+          key: cache-hypothesis-${{ runner.os }}-${{ matrix.pixi-environment }}-${{ github.run_id }}
       - name: Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         env:
@@ -157,9 +157,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis/
-          key: cache-hypothesis-${{ runner.os }}-${{ github.run_id }}
+          key: cache-hypothesis-${{ runner.os }}-${{ matrix.pixi-environment }}-${{ github.run_id }}
           restore-keys: |
-            cache-hypothesis-${{ runner.os }}-
+            cache-hypothesis-${{ runner.os }}-${{ matrix.pixi-environment }}-
       - name: Unit test
         id: unit-test
         run: |
@@ -171,13 +171,13 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis/
-          key: cache-hypothesis-${{ runner.os }}-${{ github.run_id }}
+          key: cache-hypothesis-${{ runner.os }}-${{ matrix.pixi-environment }}-${{ github.run_id }}
       - name: Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }} # zizmor: ignore[secrets-outside-env]
         with:
-          flags: unit-tests
+          flags: flaky-tests
       - name: Upload test results
         if: ${{ always() }} # Always run this step, even if tests fail
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -211,9 +211,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis/
-          key: cache-hypothesis-${{ runner.os }}-${{ github.run_id }}
+          key: cache-hypothesis-${{ runner.os }}-validation-${{ github.run_id }}
           restore-keys: |
-            cache-hypothesis-${{ runner.os }}-
+            cache-hypothesis-${{ runner.os }}-validation-
       - name: Validation test
         id: unit-test
         run: |
@@ -225,13 +225,13 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis/
-          key: cache-hypothesis-${{ runner.os }}-${{ github.run_id }}
+          key: cache-hypothesis-${{ runner.os }}-validation-${{ github.run_id }}
       - name: Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }} # zizmor: ignore[secrets-outside-env]
         with:
-          flags: unit-tests
+          flags: validation-tests
       - name: Upload test results
         if: ${{ always() }} # Always run this step, even if tests fail
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -241,9 +241,8 @@ jobs:
   merge-test-artifacts:
     runs-on: ubuntu-latest
     permissions: {}
-    needs:
-      - unit-test
-      - typechecking
+    if: always()
+    needs: [unit-test, flaky-unit-test, validation-test, typechecking]
     steps:
       - name: Merge Artifacts
         uses: actions/upload-artifact/merge@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -291,10 +290,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Restore cached pixi lockfile
-        uses: Parcels-code/pixi-lock/restore@1fab4c17af8243f6ca1321bc941cf2325f46c05d # v0.1.1
+        uses: xarray-contrib/pixi-lock/restore@1fab4c17af8243f6ca1321bc941cf2325f46c05d # v0.1.1
         with:
           cache-key: ${{ needs.cache-pixi-lock.outputs.cache-key }}
-      - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
+      - uses: prefix-dev/setup-pixi@f00437f565399d418b0acc85936d12c1fb668347 # v0.10.1
         with:
           pixi-version: ${{ needs.cache-pixi-lock.outputs.pixi-version }}
           cache: true
