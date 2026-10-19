@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Literal, get_args
 
 import numpy as np
+import xarray as xr
 from cftime import datetime as cftime_datetime
 
 from parcels._core.mesh import TMesh  # noqa: F401
@@ -48,11 +49,8 @@ GridPosition = Literal["face"] | Padding
 VectorFields = dict[str, tuple[str, str] | tuple[str, str, str]]
 
 
-def _is_xarray_object(obj):  # with no imports
-    try:
-        return "xarray.core" in obj.__module__
-    except AttributeError:
-        return False
+def _is_xarray_object(obj) -> bool:
+    return isinstance(obj, (xr.DataArray, xr.Dataset, xr.Variable))
 
 
 def _validate_against_pure_literal(value, typing_literal):

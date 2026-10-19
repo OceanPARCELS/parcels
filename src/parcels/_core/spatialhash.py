@@ -11,7 +11,6 @@ from parcels._core.index_search import (
     uxgrid_point_in_cell,
 )
 from parcels._core.warnings import FieldSetWarning
-from parcels._python import isinstance_noimport
 from parcels._repr_utils import spatialhash_describe
 
 # Budget on the total number of (face, hash cell) pairs in the hash table:
@@ -46,9 +45,13 @@ class SpatialHash:
         self,
         grid,
     ):
-        if isinstance_noimport(grid, "XGrid"):
+        # Imported here to avoid a circular import (basegrid -> spatialhash -> xgrid/uxgrid -> basegrid)
+        from parcels._core.uxgrid import UxGrid
+        from parcels._core.xgrid import XGrid
+
+        if isinstance(grid, XGrid):
             self._point_in_cell = curvilinear_point_in_cell
-        elif isinstance_noimport(grid, "UxGrid"):
+        elif isinstance(grid, UxGrid):
             self._point_in_cell = uxgrid_point_in_cell
         else:
             raise ValueError("Expected `grid` to be a parcels.XGrid or parcels.UxGrid")
@@ -56,7 +59,7 @@ class SpatialHash:
         self._source_grid = grid
         self._bitwidth = _HASH_MAX_BITWIDTH  # Max integer to use per coordinate in quantization (10 bits = 0..1023)
 
-        if isinstance_noimport(grid, "XGrid"):
+        if isinstance(grid, XGrid):
             self._coord_dim = 2  # Number of computational coordinates is 2 (bilinear interpolation)
             if self._source_grid._mesh.is_spherical():
                 lon = np.deg2rad(self._source_grid.lon)
@@ -147,7 +150,7 @@ class SpatialHash:
                 self._zlow = np.zeros_like(self._xlow)
                 self._zhigh = np.zeros_like(self._xlow)
 
-        elif isinstance_noimport(grid, "UxGrid"):
+        elif isinstance(grid, UxGrid):
             self._coord_dim = grid.uxgrid.n_max_face_nodes  # Number of barycentric coordinates
             if self._source_grid._mesh.is_spherical():
                 # Reshape node coordinates to (nfaces, nnodes_per_face)

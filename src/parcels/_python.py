@@ -10,17 +10,6 @@ NotSetType = enum.Enum("NotSetType", "VALUE")
 NOTSET = NotSetType.VALUE
 
 
-def isinstance_noimport(obj, class_or_tuple):
-    """A version of isinstance that does not require importing the class.
-    This is useful to avoid circular imports.
-    """
-    return (
-        type(obj).__name__ == class_or_tuple
-        if isinstance(class_or_tuple, str)
-        else type(obj).__name__ in class_or_tuple
-    )
-
-
 def repr_from_dunder_dict(obj: object) -> str:
     """Dataclass-like __repr__ implementation based on __dict__."""
     parts = [f"{k}={v!r}" for k, v in obj.__dict__.items()]

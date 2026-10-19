@@ -12,7 +12,6 @@ from dask.base import is_dask_collection
 
 from parcels._chunk_cached_array.core import ChunkCachedArray
 from parcels._core._windowed_array import WindowedArray
-from parcels._python import isinstance_noimport
 
 if TYPE_CHECKING:
     from parcels import Field, FieldSet, ParticleSet
@@ -312,6 +311,8 @@ def spatialhash_describe(spatialhash: SpatialHash) -> str:
 
 
 def _get_parent_model(field: Field | VectorField) -> ModelData:
-    if isinstance_noimport(field, "Field"):
-        return field.model  # type:ignore[union-attr]
-    return field.U.model  # type:ignore[union-attr]
+    from parcels._core.field import Field  # avoid circular import
+
+    if isinstance(field, Field):
+        return field.model
+    return field.U.model
