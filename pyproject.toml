@@ -93,7 +93,7 @@ select = [
   "BLE", # disallow blind `except Exception` (narrow it, or justify with `# noqa: BLE001`)
   # "FBT", # checks for boolean traps (which result in poor function API)
   # "A", # check for python builtins being used as variables or parameters
-  # "T20", # disallows printing in code - Parcels source code should not have dev debugging statements, or should use logging statements instead of prints
+  "T20", # disallows printing in code - Parcels source code should not have dev debugging statements, or should use logging statements instead of prints
   "NPY201", # numpy 2 deprecations
 ]
 
@@ -139,6 +139,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# Printing is fine in docs (notebooks, scripts) and dev tools
+"{docs,tools}/**" = ["T20"]
 # Ignore docstring rules everywhere except for the stable files (particleset.py, interpolators.py).
 "!src/parcels/{_core/basegrid,_core/field,_core/fieldset,_core/kernel,_core/particle,_core/particlefile,_core/particleset,_core/uxgrid,_core/xgrid,kernels/advection,kernels/advectiondiffusion,interpolators}.py" = [
   # Missing docstring in public class
