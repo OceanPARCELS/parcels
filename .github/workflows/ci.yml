@@ -71,7 +71,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, windows, macos]
-        pixi-environment: [test] # `test` resolves to the latest Python (currently 3.14)
+        pixi-environment: [test] # `test` resolves to the latest Python
         include:
           - os: ubuntu
             pixi-environment: "test-py311"
