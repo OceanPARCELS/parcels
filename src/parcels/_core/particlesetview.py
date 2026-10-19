@@ -77,7 +77,7 @@ class ParticleSetView:
         try:
             new_index[base] = index
             return ParticleSetView(self._data, new_index, self._pclass)
-        except Exception as e:
+        except (IndexError, TypeError, ValueError) as e:
             raise TypeError(f"Unsupported index type for ParticleSetView.__getitem__: {type(index)!r}") from e
 
     def __len__(self):
@@ -179,7 +179,7 @@ class ParticleSetViewArray:
         base_arr = np.asarray(base)
         try:
             return base_arr[subindex]
-        except Exception:
+        except (IndexError, TypeError, ValueError):
             return base_arr[np.asarray(subindex, dtype=bool)]
 
     def __getitem__(self, subindex):

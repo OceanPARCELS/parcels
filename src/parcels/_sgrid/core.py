@@ -170,7 +170,7 @@ class SGrid2DMetadata(_AttrsSerializable):
                 node_coordinates=_maybe_load_mappings(attrs.get("node_coordinates")),
                 vertical_dimensions=_maybe_load_mappings(attrs.get("vertical_dimensions")),
             )
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, AttributeError, AssertionError) as e:
             raise SGridParsingException(f"Failed to parse Grid2DMetadata from {attrs=!r}") from e
 
     def to_attrs(self) -> dict[str, str | int]:
@@ -300,7 +300,7 @@ class SGrid3DMetadata(_AttrsSerializable):
                 ),
                 node_coordinates=_maybe_load_mappings(attrs.get("node_coordinates")),
             )
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, AttributeError, AssertionError) as e:
             raise SGridParsingException(f"Failed to parse Grid3DMetadata from {attrs=!r}") from e
 
     def to_attrs(self) -> dict[str, str | int]:
@@ -475,11 +475,11 @@ def parse_grid_attrs(attrs: dict[str, Hashable]) -> SGrid2DMetadata | SGrid3DMet
     grid: SGrid2DMetadata | SGrid3DMetadata
     try:
         grid = SGrid2DMetadata.from_attrs(attrs)
-    except Exception as e:
+    except SGridParsingException as e:
         e.add_note("Failed to parse as 2D SGrid, trying 3D SGrid")
         try:
             grid = SGrid3DMetadata.from_attrs(attrs)
-        except Exception as e2:
+        except SGridParsingException as e2:
             e2.add_note("Failed to parse as 3D SGrid")
             raise SGridParsingException("Failed to parse SGrid metadata as either 2D or 3D grid") from e2
     return grid

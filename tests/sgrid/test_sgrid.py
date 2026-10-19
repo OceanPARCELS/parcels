@@ -10,7 +10,7 @@ from hypothesis import assume, example, given
 import parcels._sgrid as sgrid
 import parcels._strategies as pst
 from parcels._sgrid.accessor import get_dim_position
-from parcels._sgrid.core import _get_unique_names, parse_grid_attrs
+from parcels._sgrid.core import SGridParsingException, _get_unique_names, parse_grid_attrs
 
 
 def create_example_grid2dmetadata(with_vertical_dimensions: bool, with_node_coordinates: bool):
@@ -508,3 +508,41 @@ def test_dim_sizes_roundtrip(n, padding):
     n_faces = sgrid.get_n_nodes(n, padding)
     n_nodes = sgrid.get_n_faces(n_faces, padding)
     assert n_nodes == n
+
+
+@pytest.mark.parametrize(
+    "attrs",
+    [
+        pytest.param({}, id="empty"),
+        pytest.param({"cf_role": "grid_topology", "topology_dimension": 2}, id="missing keys"),
+        pytest.param(
+            {
+                "cf_role": "grid_topology",
+                "topology_dimension": 2,
+                "node_dimensions": "x y",
+                "face_dimensions": "x_center:x (padding:not_a_padding) y_center:y (padding:low)",
+            },
+            id="invalid padding",
+        ),
+        pytest.param(
+            {"cf_role": "grid_topology", "topology_dimension": 2, "node_dimensions": 1, "face_dimensions": 2},
+            id="non-string mappings",
+        ),
+    ],
+)
+def test_parse_grid_attrs_invalid(attrs):
+    with pytest.raises(SGridParsingException):
+        sgrid.SGrid2DMetadata.from_attrs(attrs)
+    with pytest.raises(SGridParsingException):
+        sgrid.SGrid3DMetadata.from_attrs(attrs)
+    with pytest.raises(SGridParsingException):
+        parse_grid_attrs(attrs)
+
+
+def test_parse_grid_attrs_propagates_unexpected_errors():
+    class ExplodingAttrs(dict):
+        def __getitem__(self, key):
+            raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        parse_grid_attrs(ExplodingAttrs())

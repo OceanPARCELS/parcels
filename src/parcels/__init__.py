@@ -1,9 +1,10 @@
 # isort: skip_file
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
 from importlib.metadata import version as _version
 
 try:
     __version__ = _version("parcels")
-except Exception:
+except _PackageNotFoundError:
     # Local copy or not installed with setuptools.
     __version__ = "unknown"
 

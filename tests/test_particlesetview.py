@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from parcels import Particle, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
@@ -167,3 +168,26 @@ def test_particle_mask_with_delete_state(fieldset):
     assert pset.size < initial_size
     # Remaining particles should be in the middle range (with 0.02 of total displacement)
     assert np.all((pset.x >= 0.2) & (pset.x <= 0.82))
+
+
+def _make_view(n=5):
+    from parcels._core.particlesetview import ParticleSetView
+
+    data = {"x": np.arange(n, dtype=float)}
+    return ParticleSetView(data, np.ones(n, dtype=bool), None)
+
+
+def test_particlesetview_getitem_unsupported_index_type():
+    view = _make_view()
+    with pytest.raises(TypeError, match="Unsupported index type"):
+        view[(1.0, 2.0, 3.0)]  # tuple of the wrong length, cannot be assigned to the mask
+
+
+def test_particlesetview_getitem_propagates_unexpected_errors():
+    class Exploding:
+        def __array__(self, *args, **kwargs):
+            raise RuntimeError("boom")
+
+    view = _make_view()
+    with pytest.raises(RuntimeError, match="boom"):
+        view[Exploding()]

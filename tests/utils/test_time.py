@@ -11,6 +11,7 @@ import parcels._strategies as pst  # Parcels strategies
 from parcels._core.utils.time import (
     TimeInterval,
     _get_cf_attrs,
+    is_compatible,
     maybe_convert_python_timedelta_to_numpy,
     timedelta_to_float,
 )
@@ -179,3 +180,43 @@ def test_timedelta_to_float_exceptions():
 def test_datetime_get_cf_attrs(dt):
     attrs = _get_cf_attrs(dt)
     assert "seconds" in attrs["units"]
+
+
+@pytest.mark.parametrize(
+    "t1,t2,expected",
+    [
+        pytest.param(datetime(2023, 1, 1), datetime(2023, 1, 2), True, id="datetime"),
+        pytest.param(np.timedelta64(1, "s"), np.timedelta64(2, "s"), True, id="timedelta64"),
+        pytest.param(np.timedelta64(1, "s"), datetime(2023, 1, 2), False, id="timedelta64 vs datetime"),
+        pytest.param(
+            datetime(2023, 1, 1), cftime_datetime(2023, 1, 2, calendar="noleap"), False, id="datetime vs cftime"
+        ),
+        pytest.param(
+            cftime_datetime(2023, 1, 1, calendar="noleap"),
+            cftime_datetime(2023, 1, 2, calendar="360_day"),
+            False,
+            id="cftime different calendars",
+        ),
+    ],
+)
+def test_is_compatible(t1, t2, expected):
+    assert is_compatible(t1, t2) is expected
+
+
+def test_is_compatible_propagates_unexpected_errors():
+    class Exploding:
+        def __sub__(self, other):
+            raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        is_compatible(Exploding(), Exploding())
+
+
+def test_maybe_convert_python_timedelta_to_numpy_invalid():
+    with pytest.raises(ValueError, match="Could not convert"):
+        maybe_convert_python_timedelta_to_numpy("not a timedelta")
+
+
+def test_timedelta_to_float_object_array_invalid():
+    with pytest.raises(ValueError, match="Expected a timedelta-like object"):
+        timedelta_to_float(np.array([timedelta(seconds=1), "not a timedelta"], dtype=object))

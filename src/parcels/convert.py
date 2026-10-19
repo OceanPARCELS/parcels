@@ -243,7 +243,7 @@ def _maybe_convert_time_from_float_to_timedelta(ds: xr.Dataset) -> xr.Dataset:
             try:
                 ds["time"] = ns_int.astype("timedelta64[ns]")
                 logger.info("Converted time coordinate from float to timedelta based on units.")
-            except Exception as e:
+            except (TypeError, ValueError) as e:
                 logger.warning(f"Failed to convert time coordinate to timedelta: {e}")
     return ds
 

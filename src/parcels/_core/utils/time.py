@@ -132,7 +132,9 @@ def is_compatible(
 
     try:
         t1 - t2
-    except Exception:
+    except (TypeError, ValueError):
+        # TypeError: e.g. datetime - cftime.datetime, or np.datetime64 - cftime.datetime
+        # ValueError: e.g. cftime datetimes with different calendars
         return False
     else:
         return True
@@ -185,7 +187,7 @@ def maybe_convert_python_timedelta_to_numpy(dt: timedelta | np.timedelta64) -> n
             return np.sum(dts)
         else:
             return np.timedelta64(0, "s")
-    except Exception as e:
+    except (AttributeError, TypeError, ValueError, OverflowError) as e:
         raise ValueError(f"Could not convert {dt!r} to np.timedelta64.") from e
 
 
@@ -202,7 +204,7 @@ def timedelta_to_float(dt: float | timedelta | np.timedelta64) -> float:
             try:
                 f = np.vectorize(lambda x: x.total_seconds())
                 return f(dt)
-            except Exception as e:
+            except (AttributeError, TypeError, ValueError) as e:
                 raise ValueError(f"Expected a timedelta-like object, got {dt!r}.") from e
     return float(dt)
 
