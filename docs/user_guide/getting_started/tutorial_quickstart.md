@@ -1,5 +1,7 @@
 ---
 file_format: mystnb
+mystnb:
+  execution_in_temp: true
 kernelspec:
   name: python3
 ---
