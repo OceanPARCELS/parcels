@@ -181,6 +181,7 @@ default = { features = [
   "numpydoc",
   "devtools",
 ], solve-group = "main" }
+# `test` resolves to the latest supported Python (currently 3.14)
 test = { features = ["test"], solve-group = "main" }
 test-min-versions = { features = ["test", "min-versions"] }
 test-py311 = { features = ["test", "py311"] }
