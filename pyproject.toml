@@ -108,8 +108,6 @@ ignore = [
   "RUF005",
   # Prefer `next(iter(variable.items()))` over single element slice
   "RUF015",
-  # Use `X | Y` in `isinstance` (see https://github.com/home-assistant/core/issues/123850)
-  "UP038",
   # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
   "RUF043",
 
@@ -127,7 +125,7 @@ ignore = [
   "D104",
   # Missing docstring in magic method
   "D105",
-  # Missing docstring in __init__
+  # First line should end with a period
   "D400",
   # First line should be in imperative mood (requires writing of summaries)
   "D401",
@@ -138,15 +136,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Ignore docstring rules everywhere except for the stable files (particleset.py, interpolators.py).
-"!src/parcels/{_core/basegrid,_core/field,_core/fieldset,_core/kernel,_core/particle,_core/particlefile,_core/particleset,_core/uxgrid,_core/xgrid,kernels/advection,kernels/advectiondiffusion,interpolators}.py" = [
-  # Missing docstring in public class
-  "D101",
-  # Missing docstring in public method
-  "D102",
-  # Missing docstring in public function
-  "D103",
-]
+# No docstring linting outside the package source
+"{tests,docs,tools}/**" = ["D"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
