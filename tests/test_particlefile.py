@@ -486,32 +486,6 @@ def test_particlefile_readable_after_kernel_error(fieldset, tmp_parquet):
     assert len(df) >= 1  # at least the initial condition was written
 
 
-@pytest.mark.xfail(
-    reason="set_variable_write_status should be removed - with Particle writing defined on the particle level. GH2186"
-)
-def test_pfile_set_towrite_False(fieldset, tmp_parquet):
-    npart = 10
-    pset = ParticleSet(fieldset, pclass=Particle, x=np.linspace(0, 1, npart), y=0.5 * np.ones(npart))
-    pset.set_variable_write_status("z", False)
-    pset.set_variable_write_status("lat", False)
-    pfile = pset.ParticleFile(tmp_parquet, outputdt=1)
-
-    def Update_lon(particles, fieldset):  # pragma: no cover
-        particles.dx += 0.1
-
-    pset.execute(Update_lon, runtime=10, output_file=pfile)
-
-    ds = xr.open_zarr(tmp_parquet)
-    assert "t" in ds
-    assert "z" not in ds
-    assert "lat" not in ds
-    ds.close()
-
-    # For pytest purposes, we need to reset to original status
-    pset.set_variable_write_status("z", True)
-    pset.set_variable_write_status("lat", True)
-
-
 @pytest.mark.parametrize(
     "particle",
     [
