@@ -17,8 +17,8 @@ version = "dynamic" # dynamic versioning needs better support in pixi https://gi
 backend = { name = "pixi-build-python", version = "0.*" }
 
 [package.host-dependencies]
-setuptools = "*"
-setuptools_scm = "*"
+setuptools = ">=77"
+setuptools_scm = ">=8"
 
 
 [package.run-dependencies] # keep section in sync with pyproject.toml dependencies
