@@ -17,8 +17,8 @@ version = "dynamic" # dynamic versioning needs better support in pixi https://gi
 backend = { name = "pixi-build-python", version = "0.*" }
 
 [package.host-dependencies]
-setuptools = "*"
-setuptools_scm = "*"
+setuptools = ">=77"
+setuptools_scm = ">=8"
 
 
 [package.run-dependencies] # keep section in sync with pyproject.toml dependencies
@@ -168,7 +168,7 @@ pandas-stubs = "*"
 pyarrow-stubs = "*"
 
 [feature.typing.tasks]
-typing = { cmd = "mypy src/parcels --install-types", description = "Run static type checking with mypy." }
+typing = { cmd = "mypy", description = "Run static type checking with mypy." }
 
 
 [environments]

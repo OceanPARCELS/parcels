@@ -1,4 +1,4 @@
-import datetime
+import datetime  # noqa: ICN001
 import sys
 import types
 import warnings

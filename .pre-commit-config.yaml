@@ -10,12 +10,12 @@ repos:
         types: [text]
         files: \.(json|ipynb)$
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.30.1
+    rev: v1.31.1
     hooks:
       - id: zizmor
         args: ["--offline"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.9
+    rev: v0.17.1
     hooks:
       - id: ruff
         name: ruff lint (.py)
@@ -28,22 +28,10 @@ repos:
       - id: ruff-format
         types_or: [python, jupyter]
   - repo: https://github.com/rbubley/mirrors-prettier # Update mirror as official mirror is deprecated
-    rev: v3.9.9
+    rev: v3.9.10
     hooks:
       - id: prettier
 
-  # Ruff doesn't have full coverage of pydoclint https://github.com/astral-sh/ruff/issues/12434
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.4.1
-    hooks:
-      - id: flake8
-        name: pydoclint
-        files: "none"
-        # files: parcels/fieldset.py # put here instead of in config file due to https://github.com/pre-commit/pre-commit-hooks/issues/112#issuecomment-215613842
-        args:
-          - --select=DOC103 # TODO: Expand coverage to other codes
-        additional_dependencies:
-          - pydoclint[flake8]
   - repo: https://github.com/kynan/nbstripout
     rev: 0.9.1
     hooks:

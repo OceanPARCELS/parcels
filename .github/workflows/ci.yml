@@ -271,7 +271,7 @@ jobs:
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
       - name: Typechecking
         run: |
-          pixi run typing --non-interactive --html-report mypy-report
+          pixi run typing --html-report mypy-report
       - name: Upload test results
         if: ${{ always() }} # Upload even on mypy error
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
