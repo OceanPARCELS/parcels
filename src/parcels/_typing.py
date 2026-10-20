@@ -7,7 +7,6 @@ used for runtime parameter validation (to ensure users are only using the right 
 """
 
 import os
-from collections.abc import Callable
 from datetime import datetime
 from typing import Literal, get_args
 
@@ -17,28 +16,9 @@ from cftime import datetime as cftime_datetime
 from parcels._core.mesh import TMesh  # noqa: F401
 from parcels._sgrid.core import Padding
 
-InterpMethodOption = Literal[
-    "linear",
-    "nearest",
-    "freeslip",
-    "partialslip",
-    "bgrid_velocity",
-    "bgrid_w_velocity",
-    "cgrid_velocity",
-    "linear_invdist_land_tracer",
-    "bgrid_tracer",
-    "cgrid_tracer",
-]  # corresponds with `tracer_interp_method`
-InterpMethod = (
-    InterpMethodOption | dict[str, InterpMethodOption]
-)  # corresponds with `interp_method` (which can also be dict mapping field names to method)
 PathLike = str | os.PathLike
 VectorType = Literal["3D", "3DSigma", "2D"] | None  # corresponds with `vector_type`
-GridIndexingType = Literal["pop", "mom5", "mitgcm", "nemo", "croco"]  # corresponds with `gridindexingtype`
-NetcdfEngine = Literal["netcdf4", "xarray", "scipy"]
 TimeLike = datetime | cftime_datetime | np.datetime64
-
-KernelFunction = Callable[..., None]
 
 CfAxisSpatial = Literal["X", "Y", "Z"]
 XgridAxis = CfAxisSpatial

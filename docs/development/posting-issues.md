@@ -1,5 +1,7 @@
 ---
 file_format: mystnb
+mystnb:
+  execution_in_temp: true
 kernelspec:
   name: python3
 ---
@@ -102,18 +104,6 @@ import zarr
 
 ds = xr.open_zarr(zarr.storage.ZipStore("my_dataset.zip", mode="r"))
 ds
-```
-
-```{code-cell}
-:tags: [hide-cell]
-
-# Cleanup files in doc build process
-del ds
-from pathlib import Path
-Path("my_dataset.zip").unlink()
-Path("my_dataset.nc").unlink()
-shutil.rmtree("my_dataset_unzipped")
-
 ```
 
 From there we can take a look at the structure, metadata, and grid topology of your dataset!

@@ -15,6 +15,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Operating System :: OS Independent",
   "Topic :: Scientific/Engineering",
   "Intended Audience :: Science/Research",
@@ -152,12 +153,11 @@ show_error_context = true
 warn_redundant_casts = true
 warn_unused_configs = true
 warn_unused_ignores = true
+strict_equality = true
+enable_error_code = ["ignore-without-code", "truthy-bool"]
 
 exclude = [
   # Temporarily exclude files. As we improve typechecking across the codebase, remove these
-  "src/parcels/_core/utils/time.py",
-  "src/parcels/_core/utils/interpolation.py",
-  "src/parcels/_core/utils/unstructured.py",
   "src/parcels/_core/particle.py",
   "src/parcels/_core/kernel.py",
   "src/parcels/_core/particleset.py",
@@ -165,12 +165,10 @@ exclude = [
   "src/parcels/_core/particlefile.py",
   "src/parcels/_core/uxgrid.py",
   "src/parcels/_core/spatialhash.py",
-  "src/parcels/_core/particlesetview.py",
   "src/parcels/_core/fieldset.py",
   "src/parcels/_core/index_search.py",
   "src/parcels/interpolators/_xinterpolators.py",
   "src/parcels/interpolators/_uxinterpolators.py",
-  "src/parcels/kernels/_sigmagrids.py",
   "src/parcels/kernels/_advectiondiffusion.py",
   "src/parcels/kernels/_advection.py",
 ]

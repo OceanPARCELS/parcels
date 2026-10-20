@@ -26,7 +26,6 @@ python = ">=3.11"
 cf_xarray = ">=0.10.0"
 cftime = ">=1.6.3"
 dask = ">=2025.7.0"
-holoviews = ">=1.22.0" # https://github.com/prefix-dev/rattler-build/issues/2326
 netcdf4 = ">=1.6.0"
 numpy = ">=2.3.0"
 pandas = ">=2.3"
@@ -169,7 +168,7 @@ pandas-stubs = "*"
 pyarrow-stubs = "*"
 
 [feature.typing.tasks]
-typing = { cmd = "mypy src/parcels --install-types", description = "Run static type checking with mypy." }
+typing = { cmd = "mypy", description = "Run static type checking with mypy." }
 
 
 [environments]
@@ -181,7 +180,9 @@ default = { features = [
   "numpydoc",
   "devtools",
 ], solve-group = "main" }
-test = { features = ["test"], solve-group = "main" }
+test = { features = [
+  "test",
+], solve-group = "main" } # resolves to the latest Python
 test-min-versions = { features = ["test", "min-versions"] }
 test-py311 = { features = ["test", "py311"] }
 test-py313 = { features = ["test", "py313"] }

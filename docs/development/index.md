@@ -169,6 +169,7 @@ These guidelines are here to promote Python best practices, as well as standardi
 - Include tests for any new code you write. Tests are implemented using pytest and are located in the `tests` directory.
 - Follow the [NumPy docstring conventions](https://numpydoc.readthedocs.io/en/latest/format.html) when adding or modifying public API docstrings.
 - Follow the [PEP 8](https://peps.python.org/pep-0008/) style guide when writing code. This codebase also uses additional tooling to enforce additional style guidelines. You can run this tooling with `pixi run lint`, and see which tooling is run in the `.pre-commit-config.yaml` file.
+- To deprecate a function or class, use [`typing_extensions.deprecated`](https://typing-extensions.readthedocs.io/en/latest/#typing_extensions.deprecated) (or `warnings.deprecated` once Python 3.13 is the minimum supported version).
 
 ---
 

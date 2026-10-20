@@ -27,6 +27,7 @@ dist/parcels*.egg
 src/parcels/_version_setup.py
 .pytest_cache
 .hypothesis
+.mypy_cache
 .coverage
 
 # pixi environments
