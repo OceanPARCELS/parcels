@@ -211,7 +211,7 @@ def test_mom6_to_sgrid_cefi_example():
     ds = convert.mom6_to_sgrid(fields={"U": U, "V": V}, coords=coords)
 
     # CEFI NEP output is symmetric: one more corner point than cell centres along each axis
-    assert ds["grid"].attrs["face_dimensions"] == "x_center:xq (padding:none) y_center:yq (padding:none)"
+    assert ds["grid"].attrs["face_dimensions"] == "xh:xq (padding:none) yh:yq (padding:none)"
 
     fieldset = FieldSet.from_sgrid_conventions(ds, mesh="spherical")
     lon = float(ds["lon"].mean())
@@ -248,7 +248,7 @@ def test_mom6_to_sgrid(symmetric, padding):
         "cf_role": "grid_topology",
         "topology_dimension": 2,
         "node_dimensions": "xq yq",
-        "face_dimensions": f"x_center:xq (padding:{padding}) y_center:yq (padding:{padding})",
+        "face_dimensions": f"xh:xq (padding:{padding}) yh:yq (padding:{padding})",
         "node_coordinates": "lon lat",
     }
     assert "areacello" not in ds

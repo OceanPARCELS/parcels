@@ -81,17 +81,17 @@ _MOM6_DIMENSION_COORD_NAMES: list[str] = [
     "xq",
     "yq",
     "time",
-    "x_center",
-    "y_center",
+    "xh",
+    "yh",
     "geolon_c",
     "geolat_c",
 ]
 
 _MOM6_AXIS_VARNAMES: dict[str, XgcmAxisDirection] = {
     "xq": "X",
-    "x_center": "X",
+    "xh": "X",
     "yq": "Y",
-    "y_center": "Y",
+    "yh": "Y",
     "time": "T",
 }
 
@@ -470,14 +470,6 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
         else:
             field_da = field_da.rename(name)
 
-        # U is a face along Y; V is a face along X
-        match name:
-            case "U":
-                field_da = field_da.rename({"yh": "y_center"})
-            case "V":
-                field_da = field_da.rename({"xh": "x_center"})
-            case _:
-                pass
         field_da = field_da.reset_coords(drop=True)
         fields[name] = field_da
 
@@ -487,7 +479,7 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
     ds = _set_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
     ds = _set_axis_attrs(ds, _MOM6_AXIS_VARNAMES)
 
-    for node, face in [("xq", "x_center"), ("yq", "y_center")]:
+    for node, face in [("xq", "xh"), ("yq", "yh")]:
         if ds.sizes[node] - ds.sizes[face] not in (0, 1):
             raise ValueError(
                 f"Unexpected MOM6 grid sizes: {node}={ds.sizes[node]}, {face}={ds.sizes[face]}. "
@@ -495,8 +487,8 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
             )
 
     # Symmetric layout (one more corner than centre) -> padding "none"; non-symmetric (equal sizes) -> "low"
-    pad_x = sgrid.Padding.NONE if ds.sizes["xq"] == ds.sizes["x_center"] + 1 else sgrid.Padding.LOW
-    pad_y = sgrid.Padding.NONE if ds.sizes["yq"] == ds.sizes["y_center"] + 1 else sgrid.Padding.LOW
+    pad_x = sgrid.Padding.NONE if ds.sizes["xq"] == ds.sizes["xh"] + 1 else sgrid.Padding.LOW
+    pad_y = sgrid.Padding.NONE if ds.sizes["yq"] == ds.sizes["yh"] + 1 else sgrid.Padding.LOW
 
     _assert_no_grid_metadata(ds)
     ds["grid"] = xr.DataArray(
@@ -507,8 +499,8 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
             node_dimensions=("xq", "yq"),
             node_coordinates=("geolon_c", "geolat_c"),
             face_dimensions=(
-                sgrid.FaceNodePadding("x_center", "xq", pad_x),
-                sgrid.FaceNodePadding("y_center", "yq", pad_y),
+                sgrid.FaceNodePadding("xh", "xq", pad_x),
+                sgrid.FaceNodePadding("yh", "yq", pad_y),
             ),
         ).to_attrs(),
     )

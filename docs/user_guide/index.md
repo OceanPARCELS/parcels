@@ -39,6 +39,7 @@ getting_started/explanation_concepts.md
 examples/tutorial_nemo.ipynb
 examples/tutorial_croco_3D.ipynb
 examples/tutorial_mitgcm.ipynb
+examples/tutorial_mom6.ipynb
 examples/tutorial_delft3d.ipynb
 examples/tutorial_fesom.ipynb
 examples/tutorial_schism.ipynb
