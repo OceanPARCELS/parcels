@@ -7,14 +7,18 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from re_assert import Matches
 
+import parcels._sgrid as sgrid
 import parcels.tutorial
 import tests
-from parcels import ParticleFile, ParticleSet, convert
+from parcels import Particle, ParticleFile, ParticleSet, Variable, convert
 from parcels._core.fieldset import FieldSet, IncompatibleMeshesException, _datetime_to_msg
 from parcels._core.mesh import SphericalMesh
 from parcels._core.model import _default_vector_field_components
+from parcels._core.utils.time import TimeInterval
 from parcels._datasets.structured.generated import simple_UV_sigma_dataset
 from parcels._datasets.structured.generic import datasets as datasets_structured
 from parcels._datasets.structured.generic import datasets_sgrid
@@ -457,6 +461,236 @@ def test_fieldset_add_context_values():
 
     assert fset.context["c1"] == 1.0
     assert fset.context["c2"] == 2.0
+
+
+# --------------------------------------------------------------------------------------
+# Combining models with grids of varying dimensionality (see issues #2054 and #2727)
+# --------------------------------------------------------------------------------------
+
+# Node and face dimension names per spatial axis, following the naming of the generic
+# structured datasets in parcels._datasets.structured.generic
+_AXIS_DIMS = {"X": ("XG", "XC"), "Y": ("YG", "YC"), "Z": ("ZG", "ZC")}
+
+_TIME_BASE = xr.date_range("2000-01-01", periods=3, freq="YS")
+# Time offsets are multiples of 400 days, so that the time intervals of different models can
+# coincide, overlap or be disjoint, but never exactly touch (which would make
+# TimeInterval.intersection raise, as it requires left < right)
+_TIME_OFFSETS_DAYS = [0, 400, 800, 1200]
+
+
+def _reduced_dims_dataset(spatial_axes, time_spec, field_name, *, value, sizes=None, paddings=None):
+    """Create a small SGRID dataset on a grid of the requested dimensionality.
+
+    spatial_axes is a subset of {"X", "Y", "Z"} ("X" and "Y" must come as a pair, as Parcels
+    requires both lon and lat coordinates on grids with a horizontal axis); an empty set
+    creates a 0D (spatially constant) grid. time_spec is a (n_times, offset_days) tuple, where
+    n_times is the number of time snapshots (0 means no time dimension, 1 a single snapshot).
+    The field data is constant (value), so that tests can assert exact interpolated values.
+    """
+    spatial_axes = frozenset(spatial_axes)
+    if ("X" in spatial_axes) != ("Y" in spatial_axes):
+        raise ValueError("Axes 'X' and 'Y' must be present together")
+    n_times, offset_days = time_spec
+    if n_times == 0 and not spatial_axes:
+        raise ValueError("A 0D grid requires a time dimension (a scalar field is not supported)")
+    sizes = sizes or {}
+    paddings = paddings or {}
+
+    coords = {}
+    for axis in ("Z", "Y", "X"):
+        if axis in spatial_axes:
+            node, face = _AXIS_DIMS[axis]
+            n = sizes.get(axis, 4)
+            padding = paddings.get(axis, sgrid.Padding.HIGH)
+            coords[node] = ([node], np.arange(n, dtype=float), {"axis": axis})
+            coords[face] = ([face], np.arange(sgrid.get_n_faces(n, padding), dtype=float) + 0.5, {"axis": axis})
+    if "Z" in spatial_axes:
+        coords["depth"] = (["ZG"], np.arange(sizes.get("Z", 4), dtype=float))
+    if {"X", "Y"} <= spatial_axes:
+        coords["lon"] = (["XG"], np.arange(sizes.get("X", 4), dtype=float))
+        coords["lat"] = (["YG"], np.arange(sizes.get("Y", 4), dtype=float))
+    if n_times > 0:
+        coords["time"] = (["time"], _TIME_BASE[:n_times] + np.timedelta64(offset_days, "D"), {"axis": "T"})
+
+    field_dims = []
+    field_shape = []
+    if n_times > 0:
+        field_dims.append("time")
+        field_shape.append(n_times)
+    for axis in ("Z", "Y", "X"):
+        if axis in spatial_axes:
+            field_dims.append(_AXIS_DIMS[axis][0])
+            field_shape.append(sizes.get(axis, 4))
+    data_vars = {field_name: (field_dims, np.full(field_shape, value, dtype=np.float64))}
+
+    ds = xr.Dataset(data_vars=data_vars, coords=coords)
+    return ds.pipe(
+        sgrid._attach_sgrid_metadata,
+        sgrid.SGrid2DMetadata(
+            cf_role="grid_topology",
+            topology_dimension=2,
+            node_dimensions=("XG", "YG"),
+            face_dimensions=(
+                sgrid.FaceNodePadding("XC", "XG", paddings.get("X", sgrid.Padding.HIGH)),
+                sgrid.FaceNodePadding("YC", "YG", paddings.get("Y", sgrid.Padding.HIGH)),
+            ),
+            node_coordinates=("lon", "lat") if {"X", "Y"} <= spatial_axes else None,
+            vertical_dimensions=(
+                (sgrid.FaceNodePadding("ZC", "ZG", paddings.get("Z", sgrid.Padding.HIGH)),)
+                if "Z" in spatial_axes
+                else None
+            ),
+        ),
+    )
+
+
+@st.composite
+def _sgrid_dataset_varying_dims(draw, field_name, *, spatial_axes=None, time_spec=None):
+    """Strategy for SGRID datasets on grids of varying dimensionality (0D-4D)."""
+    if spatial_axes is None:
+        spatial_axes = draw(st.sampled_from([frozenset(), frozenset("Z"), frozenset("XY"), frozenset("XYZ")]))
+    if time_spec is None:
+        # A 0D (spatially constant) grid requires a time dimension (see _reduced_dims_dataset)
+        n_times = draw(st.sampled_from([1, 2, 3]) if not spatial_axes else st.sampled_from([0, 1, 2, 3]))
+        time_spec = (n_times, draw(st.sampled_from(_TIME_OFFSETS_DAYS)))
+    sizes = {axis: draw(st.integers(3, 6)) for axis in spatial_axes}
+    paddings = {axis: draw(st.sampled_from(list(sgrid.Padding))) for axis in spatial_axes}
+    value = draw(st.floats(min_value=1e-3, max_value=100.0, allow_nan=False, allow_infinity=False))
+    return _reduced_dims_dataset(spatial_axes, time_spec, field_name, value=value, sizes=sizes, paddings=paddings)
+
+
+@st.composite
+def _datasets_varying_dims(draw, *, min_models=2, max_models=5, require_spatial_axis=False):
+    """Strategy for a list of SGRID datasets (with unique field names) on grids of varying dimensionality."""
+    n_models = draw(st.integers(min_models, max_models))
+    datasets = []
+    for i in range(n_models):
+        spatial_axes = (
+            draw(st.sampled_from([frozenset("Z"), frozenset("XY"), frozenset("XYZ")])) if require_spatial_axis else None
+        )
+        datasets.append(draw(_sgrid_dataset_varying_dims(f"field_{i}", spatial_axes=spatial_axes)))
+    return datasets
+
+
+def _field_name_of(ds):
+    (name,) = [name for name in ds.data_vars if ds[name].attrs.get("cf_role") != "grid_topology"]
+    return name
+
+
+def _expected_grid_axes(ds):
+    present = {axis for axis, (node, _) in _AXIS_DIMS.items() if node in ds.dims}
+    return sorted(present, key="ZYX".index)
+
+
+def _expected_field_shape(ds):
+    sizes = {
+        "T": ds.sizes.get("time", 1),
+        "Z": ds.sizes.get("ZG", 1),
+        "Y": ds.sizes.get("YG", 1),
+        "X": ds.sizes.get("XG", 1),
+    }
+    return tuple(sizes[axis] for axis in "TZYX")
+
+
+def _expected_time_interval(datasets):
+    intervals = [
+        (ds["time"].values[0], ds["time"].values[-1]) for ds in datasets if "time" in ds.dims and ds.sizes["time"] > 1
+    ]
+    if not intervals:
+        return None
+    left = max(interval[0] for interval in intervals)
+    right = min(interval[1] for interval in intervals)
+    return TimeInterval(left, right) if left < right else None
+
+
+@given(datasets=_datasets_varying_dims(min_models=2, max_models=5))
+@settings(deadline=None, max_examples=50)
+def test_fieldset_add_varying_grid_dimensionality(datasets):
+    """Models with grids of varying dimensionality (0D-4D) can be combined into one FieldSet (issue #2727)."""
+    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    combined = fieldsets[0]
+    for fieldset in fieldsets[1:]:
+        combined = combined + fieldset
+
+    assert len(combined.models) == len(datasets)
+    assert set(combined.fields) == {_field_name_of(ds) for ds in datasets}
+    assert len(combined.gridset) == len(datasets)
+    assert combined.time_interval == _expected_time_interval(datasets)
+
+    for ds, model in zip(datasets, combined.models, strict=True):
+        name = _field_name_of(ds)
+        field = combined.fields[name]
+        # The field keeps the grid (and hence the dimensionality) of the model it originates from
+        assert field.grid is model.grid
+        assert field.grid.axes == _expected_grid_axes(ds)
+        assert field.data.shape == _expected_field_shape(ds)
+        if "time" in ds.dims and ds.sizes["time"] > 1:
+            assert field.time_interval == model.time_interval
+        else:
+            assert field.time_interval is None
+        # The field evaluates to its constant value at an interior point of its grid
+        value = float(ds[name].values.flat[0])
+        assert field.eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(value, rel=1e-9)
+
+    io = StringIO()
+    combined.describe(io)
+    for ds in datasets:
+        assert _field_name_of(ds) in io.getvalue()
+
+
+@given(datasets=_datasets_varying_dims(min_models=2, max_models=4, require_spatial_axis=True))
+@settings(deadline=None, max_examples=25)
+def test_fieldset_add_varying_grid_dimensionality_execute(datasets):
+    """A FieldSet combining models with 1D-4D grids can be used to execute particles (issue #2727).
+
+    Models with 0D (spatially constant) grids are excluded, as sampling such fields from a
+    kernel is not supported yet (issue #2054).
+    """
+    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    combined = fieldsets[0]
+    for fieldset in fieldsets[1:]:
+        combined = combined + fieldset
+
+    names = [_field_name_of(ds) for ds in datasets]
+    values = [float(ds[name].values.flat[0]) for ds, name in zip(datasets, names, strict=True)]
+
+    def SampleFields(particles, fieldset):
+        for name in names:
+            setattr(particles, f"sampled_{name}", getattr(fieldset, name)[particles])
+
+    pclass = Particle.add_variable([Variable(f"sampled_{name}", dtype=np.float64) for name in names])
+    pset = ParticleSet(combined, pclass=pclass, x=[0.5], y=[0.5], z=[0.5], t=np.timedelta64(0, "s"))
+    pset.execute(SampleFields, runtime=np.timedelta64(1, "s"), dt=np.timedelta64(1, "s"))
+
+    for name, value in zip(names, values, strict=True):
+        assert getattr(pset, f"sampled_{name}")[0] == pytest.approx(value, rel=1e-9)
+
+
+@pytest.mark.parametrize(
+    "spatial_axes,n_times",
+    [
+        pytest.param(frozenset("XYZ"), 0, id="3d_spatial_no_time"),
+        pytest.param(frozenset("XY"), 0, id="2d_spatial_no_time"),
+        pytest.param(frozenset("XY"), 1, id="2d_spatial_single_time"),
+        pytest.param(frozenset("Z"), 0, id="1d_spatial_no_time"),
+        pytest.param(frozenset("Z"), 1, id="1d_spatial_single_time"),
+        pytest.param(frozenset(), 2, id="0d_spatial_time_varying"),
+    ],
+)
+def test_fieldset_add_4d_base_and_reduced_dims_model(spatial_axes, n_times):
+    """A full 4D FieldSet supports adding models of reduced grid dimensionality (issue #2727)."""
+    base = _reduced_dims_dataset(frozenset("XYZ"), (3, 0), "base_field", value=1.0)
+    reduced = _reduced_dims_dataset(spatial_axes, (n_times, 0), "reduced_field", value=2.0)
+
+    combined = FieldSet.from_sgrid_conventions(base, mesh="flat") + FieldSet.from_sgrid_conventions(
+        reduced, mesh="flat"
+    )
+
+    assert len(combined.models) == 2
+    assert set(combined.fields) == {"base_field", "reduced_field"}
+    assert combined.fields["reduced_field"].grid.axes == _expected_grid_axes(reduced)
+    assert combined.fields["base_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(1.0, rel=1e-9)
+    assert combined.fields["reduced_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(2.0, rel=1e-9)
 
 
 def test_fieldset_describe(fieldset_two_models: FieldSet):
