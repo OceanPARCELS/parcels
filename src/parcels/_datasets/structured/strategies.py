@@ -143,7 +143,7 @@ def reduced_dims_dataset(
     sizes = sizes or {}
     paddings = paddings or {}
 
-    coords = {}
+    coords: dict[str, tuple] = {}
     for axis in ("Z", "Y", "X"):
         if axis in spatial_axes:
             node, face = _AXIS_DIMS[axis]
