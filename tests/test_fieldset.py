@@ -462,14 +462,6 @@ def test_fieldset_add_context_values():
     assert fset.context["c2"] == 2.0
 
 
-# --------------------------------------------------------------------------------------
-# Combining models with grids of varying dimensionality (see issues #2054 and #2727)
-#
-# Datasets are generated with the `sgrid_datasets_varying_dims` strategy and the
-# `reduced_dims_dataset` builder in parcels._datasets.structured.strategies.
-# --------------------------------------------------------------------------------------
-
-
 def _field_name_of(ds):
     (name,) = [name for name in ds.data_vars if ds[name].attrs.get("cf_role") != "grid_topology"]
     return name
@@ -505,7 +497,7 @@ def _expected_time_interval(datasets):
 @given(datasets=sgrid_datasets_varying_dims(min_models=2, max_models=5))
 @settings(deadline=None, max_examples=50)
 def test_fieldset_add_varying_grid_dimensionality(datasets):
-    """Models with grids of varying dimensionality (0D-4D) can be combined into one FieldSet (issue #2727)."""
+    """Models with grids of varying dimensionality (0D-4D) can be combined into one FieldSet."""
     fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
     combined = fieldsets[0]
     for fieldset in fieldsets[1:]:
@@ -540,7 +532,7 @@ def test_fieldset_add_varying_grid_dimensionality(datasets):
 @given(datasets=sgrid_datasets_varying_dims(min_models=2, max_models=4, require_spatial_axis=True))
 @settings(deadline=None, max_examples=25)
 def test_fieldset_add_varying_grid_dimensionality_execute(datasets):
-    """A FieldSet combining models with 1D-4D grids can be used to execute particles (issue #2727).
+    """A FieldSet combining models with 1D-4D grids can be used to execute particles.
 
     Models with 0D (spatially constant) grids are excluded, as sampling such fields from a
     kernel is not supported yet (issue #2054).
@@ -577,7 +569,7 @@ def test_fieldset_add_varying_grid_dimensionality_execute(datasets):
     ],
 )
 def test_fieldset_add_4d_base_and_reduced_dims_model(spatial_axes, n_times):
-    """A full 4D FieldSet supports adding models of reduced grid dimensionality (issue #2727)."""
+    """A full 4D FieldSet supports adding models of reduced grid dimensionality."""
     base = reduced_dims_dataset(frozenset("XYZ"), (3, 0), "base_field", value=1.0)
     reduced = reduced_dims_dataset(spatial_axes, (n_times, 0), "reduced_field", value=2.0)
 
