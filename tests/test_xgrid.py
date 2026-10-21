@@ -12,6 +12,7 @@ from parcels._core.index_search import (
     LEFT_OUT_OF_BOUNDS,
     RIGHT_OUT_OF_BOUNDS,
     _search_1d_array,
+    _search_1d_columns,
 )
 from parcels._core.utils.time import timedelta_to_float
 from parcels._core.xgrid import (
@@ -163,7 +164,7 @@ def test_dim_with_duplicate_axis():
     ds["data_g"] = ds["data_g"].expand_dims("vertical_dimensions_dim2", 1)
 
     z = ds["vertical_dimensions_dim2"]
-    z.attrs.update({"axis": "Z", "c_grid_axis_shift": 0})
+    z.attrs.update({"axis": "Z"})
     ds["vertical_dimensions_dim2"] = z
 
     # TODO: Clean up this attribute setting (really, this should be on the source datasets)
@@ -244,6 +245,19 @@ def corner_to_cell_center_points(lat, lon):
     return lat_c, lon_c
 
 
+def _search_shared_column(array, x):
+    """Run ``_search_1d_columns`` with every query point searching the same column ``array``."""
+    x = np.atleast_1d(np.asarray(x, dtype=float))
+    return _search_1d_columns(np.broadcast_to(array, (x.size, array.size)), x)
+
+
+SEARCH_1D_FUNCTIONS = [
+    pytest.param(_search_1d_array, id="search_1d_array"),
+    pytest.param(_search_shared_column, id="search_1d_columns"),
+]
+
+
+@pytest.mark.parametrize("search_1d", SEARCH_1D_FUNCTIONS)
 @pytest.mark.parametrize(
     "array, x, expected_xi, expected_xsi",
     [
@@ -253,12 +267,13 @@ def corner_to_cell_center_points(lat, lon):
         (np.array([1, 2, 3, 4, 5]), 4.5, 3, 0.5),
     ],
 )
-def test_search_1d_array(array, x, expected_xi, expected_xsi):
-    xi, xsi = _search_1d_array(array, x)
+def test_search_1d_array(search_1d, array, x, expected_xi, expected_xsi):
+    xi, xsi = search_1d(array, x)
     np.testing.assert_array_equal(xi, expected_xi)
     np.testing.assert_allclose(xsi, expected_xsi)
 
 
+@pytest.mark.parametrize("search_1d", SEARCH_1D_FUNCTIONS)
 @pytest.mark.parametrize(
     "array, x, expected_xi",
     [
@@ -266,11 +281,12 @@ def test_search_1d_array(array, x, expected_xi, expected_xsi):
         (np.array([1, 2, 3, 4, 5]), 6.5, RIGHT_OUT_OF_BOUNDS),
     ],
 )
-def test_search_1d_array_out_of_bounds(array, x, expected_xi):
-    xi, _xsi = _search_1d_array(array, x)
+def test_search_1d_array_out_of_bounds(search_1d, array, x, expected_xi):
+    xi, _xsi = search_1d(array, x)
     assert xi == expected_xi
 
 
+@pytest.mark.parametrize("search_1d", SEARCH_1D_FUNCTIONS)
 @pytest.mark.parametrize(
     "array, x, expected_xi",
     [
@@ -278,8 +294,8 @@ def test_search_1d_array_out_of_bounds(array, x, expected_xi):
         (np.array([1, 2, 3, 4, 5]), (6.5, 1), (RIGHT_OUT_OF_BOUNDS, 0)),
     ],
 )
-def test_search_1d_array_some_out_of_bounds(array, x, expected_xi):
-    xi, _ = _search_1d_array(array, x)
+def test_search_1d_array_some_out_of_bounds(search_1d, array, x, expected_xi):
+    xi, _ = search_1d(array, x)
     np.testing.assert_array_equal(xi, expected_xi)
 
 

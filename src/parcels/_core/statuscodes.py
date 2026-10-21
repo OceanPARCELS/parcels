@@ -21,7 +21,6 @@ class StatusCode:
 
     Success = 0
     EndofLoop = 1
-    Evaluate = 10
     Repeat = 20
     Delete = 30
     StopExecution = 40

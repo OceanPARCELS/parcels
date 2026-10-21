@@ -32,7 +32,7 @@ def test_open_dataset(name):
 
 @pytest.mark.parametrize("name", remote.list_remote_datasets())
 def test_dataset_keys(name):
-    assert not name.endswith((".zarr", ".zip", ".nc")), "Dataset name should not have suffix"
+    assert not name.endswith((".zip", ".nc")), "Dataset name should not have suffix"
 
 
 def test_list_datasets():

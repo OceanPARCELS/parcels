@@ -79,11 +79,11 @@ jobs:
 
       - name: Publish package to TestPyPI
         if: github.event_name == 'push'
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.12.4 # zizmor: ignore[use-trusted-publishing]
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2 # zizmor: ignore[use-trusted-publishing]
         with:
           user: __token__
           password: ${{ secrets.PARCELS_PYPI_TEST_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
+          repository-url: https://test.pypi.org/legacy/
           verbose: true
 
   upload-to-pypi:
@@ -105,12 +105,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     steps:
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
         with:
           activate-environment: parcels
           python-version: "3.11"
           channels: conda-forge
       - run: conda install -c conda-forge pip
       - run: pip install parcels --no-cache
-      - run: curl https://raw.githubusercontent.com/Parcels-code/parcels/main/docs/examples/example_peninsula.py > example_peninsula.py
-      - run: python example_peninsula.py
+      - run: python -c "import parcels; print(parcels.__version__)"

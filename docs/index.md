@@ -9,7 +9,7 @@ Welcome to the documentation of Parcels. **Parcels** provides a set of Python cl
 _Animation of virtual particles carried by ocean surface flow in the global oceans. The particles are advected with Parcels in data from the [Copernicus Marine Service](https://marine.copernicus.eu). See [here](./user_guide/examples/tutorial_homepage_animation.md) for the script to create this animation yourself._
 
 ```{note}
-You can browse the documentation for older versions by using the version switcher in the bottom right.
+You are viewing the documentation for Parcels {{ version }}. You can browse the documentation for older versions by using the version switcher in the bottom right.
 ```
 
 **Useful links**: [Installation instructions](user_guide/getting_started/installation) | [Discussions on GitHub](https://github.com/Parcels-code/parcels/discussions) | [Issue on GitHub](https://github.com/Parcels-code/parcels/issues) | [Parcels website](https://parcels-code.org/) | [CLAM community website](https://clam-community.github.io/) | [API reference](reference/parcels/index)

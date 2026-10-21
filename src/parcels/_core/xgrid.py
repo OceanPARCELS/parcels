@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Hashable, Sequence
 from functools import cached_property
 from typing import Literal, cast
@@ -10,9 +11,11 @@ from dask import is_dask_collection
 import parcels._sgrid as sgrid
 import parcels._typing as ptyping
 from parcels._core.basegrid import BaseGrid
-from parcels._core.index_search import _search_1d_array, _search_indices_curvilinear_2d
+from parcels._core.index_search import _search_1d_array, _search_1d_columns, _search_indices_curvilinear_2d
 from parcels._core.mesh import SphericalMesh, get_mesh
+from parcels._core.warnings import FieldSetWarning
 from parcels._sgrid.accessor import _get_dim_to_axis_mapping, get_dim_position
+from parcels.interpolators._xinterpolators import _get_offsets_dictionary
 
 _FIELD_DATA_ORDERING: Sequence[ptyping.XgcmAxisDirection] = "TZYX"
 _XGRID_AXES_ORDERING: Sequence[ptyping.XgridAxis] = "ZYX"
@@ -135,7 +138,28 @@ class XGrid(BaseGrid):
             assert_valid_lat_lon(ds["lat"], ds["lon"], self.sgrid_metadata)
 
         if "Z" in axes:
-            assert_valid_depth(ds["depth"])
+            depth = ds["depth"]
+            if depth.ndim not in (1, 4):
+                raise ValueError(f"depth must be a 1D or 4D array of vertical coordinates, got {depth.ndim}D")
+            if depth.ndim == 4:
+                assert self.sgrid_metadata.vertical_dimensions is not None
+                vertical_dim = self.sgrid_metadata.vertical_dimensions[0].node
+                fnp_x, fnp_y = self.sgrid_metadata.face_dimensions
+                expected_dims = ("time", vertical_dim, fnp_y.face, fnp_x.face)
+                if depth.dims != expected_dims:
+                    raise ValueError(f"A 4D depth must have dims {expected_dims}, got {depth.dims}")
+                warnings.warn(
+                    "Time-varying (4D) z coordinates are experimental and may cause significant memory overhead that "
+                    f"leads to OOM errors. This z coordinate has sizes {dict(depth.sizes)} ({depth.nbytes / 1e9:.3g} GB). "
+                    f"Assumptions: z has dims {expected_dims}, i.e. it is "
+                    f"defined at the layer interfaces on the cell centres, and is strictly increasing along "
+                    f"{vertical_dim!r}; each particle uses the z column at the centre of its grid cell, so z is constant "
+                    "within a cell and jumps between cells, it is linearly interpolated in time between z snapshots.",
+                    FieldSetWarning,
+                    stacklevel=5,
+                )
+            else:
+                assert_valid_depth(depth)
 
         self._ds = ds
 
@@ -149,8 +173,8 @@ class XGrid(BaseGrid):
     @property
     def lon(self):
         """
-        Note
-        ----
+        Notes
+        -----
         Included for compatibility with v3 codebase. May be removed in future.
         TODO v4: Evaluate
         """
@@ -164,8 +188,8 @@ class XGrid(BaseGrid):
     @property
     def lat(self):
         """
-        Note
-        ----
+        Notes
+        -----
         Included for compatibility with v3 codebase. May be removed in future.
         TODO v4: Evaluate
         """
@@ -179,8 +203,8 @@ class XGrid(BaseGrid):
     @property
     def depth(self):
         """
-        Note
-        ----
+        Notes
+        -----
         Included for compatibility with v3 codebase. May be removed in future.
         TODO v4: Evaluate
         """
@@ -283,8 +307,8 @@ class XGrid(BaseGrid):
     @property
     def _z4d(self) -> Literal[0, 1]:
         """
-        Note
-        ----
+        Notes
+        -----
         Included for compatibility with v3 codebase. May be removed in future.
         TODO v4: Evaluate
         """
@@ -313,15 +337,20 @@ class XGrid(BaseGrid):
             else:
                 return GridType.CurvilinearSGrid
 
-    def search(self, z, y, x, ei=None):
+    def search(self, z, y, x, ei=None, ti=None, tau=None):
         ds = self._ds
 
-        if "Z" in self.axes:
-            zi, zeta = _search_1d_array(ds.depth.values, z)
-        else:
-            zi, zeta = np.zeros(z.shape, dtype=int), np.zeros(z.shape, dtype=float)
+        if "X" not in self.axes or ds.lon.ndim == 1:
+            if "Y" in self.axes:
+                yi, eta = _search_1d_array(ds.lat.values, y)
+            else:
+                yi, eta = np.zeros(y.shape, dtype=int), np.zeros(y.shape, dtype=float)
 
-        if "X" in self.axes and "Y" in self.axes and ds.lon.ndim == 2:
+            if "X" in self.axes:
+                xi, xsi = _search_1d_array(ds.lon.values, x)
+            else:
+                xi, xsi = np.zeros(x.shape, dtype=int), np.zeros(x.shape, dtype=float)
+        elif ds.lon.ndim == 2:
             yi, xi = None, None
             if ei is not None:
                 axis_indices = self.unravel_index(ei)
@@ -329,31 +358,55 @@ class XGrid(BaseGrid):
                 yi = axis_indices.get("Y")
 
             yi, eta, xi, xsi = _search_indices_curvilinear_2d(self, y, x, yi, xi)
-
-            return {
-                "Z": {"index": zi, "bcoord": zeta},
-                "Y": {"index": yi, "bcoord": eta},
-                "X": {"index": xi, "bcoord": xsi},
-            }
-
-        if "X" in self.axes and ds.lon.ndim > 2:
+        else:
             raise NotImplementedError("Searching in >2D lon/lat arrays is not implemented yet.")
 
-        if "Y" in self.axes:
-            yi, eta = _search_1d_array(ds.lat.values, y)
+        if "Z" in self.axes and ds.depth.ndim == 4:
+            zi, zeta = self._search_time_varying_depth(z, yi, xi, ti, tau)
+        elif "Z" in self.axes:
+            zi, zeta = _search_1d_array(ds.depth.values, z)
         else:
-            yi, eta = np.zeros(y.shape, dtype=int), np.zeros(y.shape, dtype=float)
-
-        if "X" in self.axes:
-            xi, xsi = _search_1d_array(ds.lon.values, x)
-        else:
-            xi, xsi = np.zeros(x.shape, dtype=int), np.zeros(x.shape, dtype=float)
+            zi, zeta = np.zeros(z.shape, dtype=int), np.zeros(z.shape, dtype=float)
 
         return {
             "Z": {"index": zi, "bcoord": zeta},
             "Y": {"index": yi, "bcoord": eta},
             "X": {"index": xi, "bcoord": xsi},
         }
+
+    def _search_time_varying_depth(self, z, yi, xi, ti, tau):
+        """Vertical search of each particle in the z column at the centre of its cell using temporal linear
+        interpolation between the snapshots ti and ti + 1.
+        """
+        found = (yi >= 0) & (xi >= 0)
+        offsets = _get_offsets_dictionary(self)
+        yi_centre = yi[found] + offsets["Y"]
+        xi_centre = xi[found] + offsets["X"]
+
+        depth = self._ds["depth"]
+        fnp_x, fnp_y = self.sgrid_metadata.face_dimensions
+        cell_centres = {
+            fnp_y.face: xr.DataArray(yi_centre, dims="points"),
+            fnp_x.face: xr.DataArray(xi_centre, dims="points"),
+        }
+
+        ti_found = np.broadcast_to(ti, yi.shape)[found]
+        columns_ti = depth.isel({"time": xr.DataArray(ti_found, dims="points"), **cell_centres})
+
+        if depth.sizes["time"] == 1:
+            cell_columns = columns_ti
+        else:
+            columns_tnext = depth.isel({"time": xr.DataArray(ti_found + 1, dims="points"), **cell_centres})
+            tau_found = xr.DataArray(np.broadcast_to(tau, yi.shape)[found], dims="points")
+            cell_columns = (1 - tau_found) * columns_ti + tau_found * columns_tnext
+
+        # Particles outside the grid are given a NaN z column for vertical searching
+        columns = np.full((yi.size, cell_columns.shape[1]), np.nan)
+        columns[found] = cell_columns.values
+        zi, zeta = _search_1d_columns(columns, z)
+
+        # Particles outside the grid are given a 0 vertical index and a NaN vertical barycentric coordinate
+        return np.where(found, zi, 0), np.where(found, zeta, np.nan)
 
     @cached_property
     def _fpoint_info(self) -> dict[ptyping.XgridAxis, sgrid.Padding]:

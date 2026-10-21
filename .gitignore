@@ -27,6 +27,7 @@ dist/parcels*.egg
 src/parcels/_version_setup.py
 .pytest_cache
 .hypothesis
+.mypy_cache
 .coverage
 
 # pixi environments
@@ -38,3 +39,6 @@ src/parcels/_version_setup.py
 # be required to support that - see https://github.com/pydata/xarray/issues/10732#issuecomment-3327780806
 # for more details)
 pixi.lock
+
+# Temporary notebook created by `pixi run docs-run-notebook`
+/tmp-docs-run-notebook/

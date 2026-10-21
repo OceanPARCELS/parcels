@@ -1,4 +1,4 @@
-import datetime
+import datetime  # noqa: ICN001
 import sys
 import types
 import warnings
@@ -19,7 +19,9 @@ from parcels._core.utils.time import (
     float_to_datelike,
     timedelta_to_float,
 )
+from parcels._core.uxgrid import UxGrid
 from parcels._core.warnings import ParticleSetWarning
+from parcels._core.xgrid import XGrid
 from parcels._logger import logger
 
 __all__ = ["ParticleSet"]
@@ -82,6 +84,14 @@ class ParticleSet:
         if z is None:
             minz = None
             for field in self.fieldset.fields.values():
+                has_time_varying_z = (isinstance(field.grid, UxGrid) and field.grid.z.ndim == 3) or (
+                    isinstance(field.grid, XGrid) and "Z" in field.grid.axes and field.grid._ds["depth"].ndim == 4
+                )
+                if has_time_varying_z:
+                    raise ValueError(
+                        f"Field {field.name!r} has a time-varying vertical grid, so there is no default "
+                        "particle.z. Pass the particle vertical start locations explicitly with `z`."
+                    )
                 for depth in field.grid.depth:
                     if minz is None or np.abs(depth) < np.abs(minz):
                         minz = depth
@@ -328,7 +338,7 @@ class ParticleSet:
         indices
             Indices of error particles.
         """
-        return self.data_indices("state", [StatusCode.Success, StatusCode.Evaluate], invert=True)
+        return np.where(self._data["state"] != StatusCode.Success)[0]
 
     @property
     def _num_error_particles(self):
@@ -339,7 +349,7 @@ class ParticleSet:
         int
             Number of error particles.
         """
-        return np.sum(np.isin(self._data["state"], [StatusCode.Success, StatusCode.Evaluate], invert=True))
+        return int(np.sum(self._data["state"] != StatusCode.Success))
 
     def set_variable_write_status(self, var, write_status):
         """Method to set the write status of a Variable.

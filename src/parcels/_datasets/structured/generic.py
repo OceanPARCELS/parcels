@@ -31,14 +31,14 @@ def _rotated_curvilinear_grid():
             "V_C_grid": (["time", "ZG", "YG", "XC"], np.random.rand(T, Z, Y, X)),
         },
         coords={
-            "XG": (["XG"], XG, {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "YG": (["YG"], YG, {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "XG": (["XG"], XG, {"axis": "X"}),
+            "YG": (["YG"], YG, {"axis": "Y"}),
             "XC": (["XC"], XG + 0.5, {"axis": "X"}),
             "YC": (["YC"], YG + 0.5, {"axis": "Y"}),
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -50,12 +50,12 @@ def _rotated_curvilinear_grid():
             "lon": (
                 ["YG", "XG"],
                 LON,
-                {"axis": "X", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "X"},
             ),
             "lat": (
                 ["YG", "XG"],
                 LAT,
-                {"axis": "Y", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "Y"},
             ),
         },
     )
@@ -109,14 +109,14 @@ def _unrolled_cone_curvilinear_grid():
             "V_C_grid": (["time", "ZG", "YG", "XC"], np.random.rand(T, Z, Y, X)),
         },
         coords={
-            "XG": (["XG"], XG, {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "YG": (["YG"], YG, {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "XG": (["XG"], XG, {"axis": "X"}),
+            "YG": (["YG"], YG, {"axis": "Y"}),
             "XC": (["XC"], XG + 0.5, {"axis": "X"}),
             "YC": (["YC"], YG + 0.5, {"axis": "Y"}),
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -128,12 +128,12 @@ def _unrolled_cone_curvilinear_grid():
             "lon": (
                 ["YG", "XG"],
                 LON,
-                {"axis": "X", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "X"},
             ),
             "lat": (
                 ["YG", "XG"],
                 LAT,
-                {"axis": "Y", "c_grid_axis_shift": -0.5},  # ? Needed?
+                {"axis": "Y"},
             ),
         },
     )
@@ -167,13 +167,13 @@ datasets = {
             "XG": (
                 ["XG"],
                 2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": -0.5},
+                {"axis": "X"},
             ),
             "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X) + 0.5), {"axis": "X"}),
             "YG": (
                 ["YG"],
                 2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": -0.5},
+                {"axis": "Y"},
             ),
             "YC": (
                 ["YC"],
@@ -183,7 +183,7 @@ datasets = {
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -222,13 +222,13 @@ datasets = {
             "XG": (
                 ["XG"],
                 2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": 0.5},
+                {"axis": "X"},
             ),
             "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X) - 0.5), {"axis": "X"}),
             "YG": (
                 ["YG"],
                 2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": 0.5},
+                {"axis": "Y"},
             ),
             "YC": (
                 ["YC"],
@@ -238,7 +238,7 @@ datasets = {
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": 0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
@@ -277,13 +277,13 @@ datasets = {
             "XG": (
                 ["XG"],
                 2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": 0.5},
+                {"axis": "X"},
             ),
             "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X - 1) - 0.5), {"axis": "X"}),
             "YG": (
                 ["YG"],
                 2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": 0.5},
+                {"axis": "Y"},
             ),
             "YC": (
                 ["YC"],
@@ -293,66 +293,11 @@ datasets = {
             "ZG": (
                 ["ZG"],
                 np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": 0.5},
+                {"axis": "Z"},
             ),
             "ZC": (
                 ["ZC"],
                 np.arange(Z - 1) - 0.5,
-                {"axis": "Z"},
-            ),
-            "lon": (["XG"], 2 * np.pi / X * np.arange(0, X)),
-            "lat": (["YG"], 2 * np.pi / (Y) * np.arange(0, Y)),
-            "depth": (["ZG"], np.arange(Z)),
-            "time": (["time"], TIME, {"axis": "T"}),
-        },
-    ).pipe(
-        sgrid._attach_sgrid_metadata,
-        sgrid.SGrid2DMetadata(
-            cf_role="grid_topology",
-            topology_dimension=2,
-            node_dimensions=("XG", "YG"),
-            face_dimensions=(
-                sgrid.FaceNodePadding("XC", "XG", sgrid.Padding.BOTH),
-                sgrid.FaceNodePadding("YC", "YG", sgrid.Padding.BOTH),
-            ),
-            node_coordinates=("lon", "lat"),
-            vertical_dimensions=(sgrid.FaceNodePadding("ZC", "ZG", sgrid.Padding.BOTH),),
-        ),
-    ),
-    "ds_2d_outer": xr.Dataset(
-        {
-            "data_g": (["time", "ZG", "YG", "XG"], np.random.rand(T, Z, Y, X)),
-            "data_c": (["time", "ZC", "YC", "XC"], np.random.rand(T, Z + 1, Y + 1, X + 1)),
-            "U_A_grid": (["time", "ZG", "YG", "XG"], np.random.rand(T, Z, Y, X)),
-            "V_A_grid": (["time", "ZG", "YG", "XG"], np.random.rand(T, Z, Y, X)),
-            "U_C_grid": (["time", "ZG", "YC", "XG"], np.random.rand(T, Z, Y + 1, X)),
-            "V_C_grid": (["time", "ZG", "YG", "XC"], np.random.rand(T, Z, Y, X + 1)),
-        },
-        coords={
-            "XG": (
-                ["XG"],
-                2 * np.pi / X * np.arange(0, X),
-                {"axis": "X", "c_grid_axis_shift": -0.5},
-            ),
-            "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X + 1) + 0.5), {"axis": "X"}),
-            "YG": (
-                ["YG"],
-                2 * np.pi / (Y) * np.arange(0, Y),
-                {"axis": "Y", "c_grid_axis_shift": -0.5},
-            ),
-            "YC": (
-                ["YC"],
-                2 * np.pi / (Y) * (np.arange(0, Y + 1) + 0.5),
-                {"axis": "Y"},
-            ),
-            "ZG": (
-                ["ZG"],
-                np.arange(Z),
-                {"axis": "Z", "c_grid_axis_shift": -0.5},
-            ),
-            "ZC": (
-                ["ZC"],
-                np.arange(Z + 1) + 0.5,
                 {"axis": "Z"},
             ),
             "lon": (["XG"], 2 * np.pi / X * np.arange(0, X)),
@@ -372,6 +317,61 @@ datasets = {
             ),
             node_coordinates=("lon", "lat"),
             vertical_dimensions=(sgrid.FaceNodePadding("ZC", "ZG", sgrid.Padding.NONE),),
+        ),
+    ),
+    "ds_2d_outer": xr.Dataset(
+        {
+            "data_g": (["time", "ZG", "YG", "XG"], np.random.rand(T, Z, Y, X)),
+            "data_c": (["time", "ZC", "YC", "XC"], np.random.rand(T, Z + 1, Y + 1, X + 1)),
+            "U_A_grid": (["time", "ZG", "YG", "XG"], np.random.rand(T, Z, Y, X)),
+            "V_A_grid": (["time", "ZG", "YG", "XG"], np.random.rand(T, Z, Y, X)),
+            "U_C_grid": (["time", "ZG", "YC", "XG"], np.random.rand(T, Z, Y + 1, X)),
+            "V_C_grid": (["time", "ZG", "YG", "XC"], np.random.rand(T, Z, Y, X + 1)),
+        },
+        coords={
+            "XG": (
+                ["XG"],
+                2 * np.pi / X * np.arange(0, X),
+                {"axis": "X"},
+            ),
+            "XC": (["XC"], 2 * np.pi / X * (np.arange(0, X + 1) + 0.5), {"axis": "X"}),
+            "YG": (
+                ["YG"],
+                2 * np.pi / (Y) * np.arange(0, Y),
+                {"axis": "Y"},
+            ),
+            "YC": (
+                ["YC"],
+                2 * np.pi / (Y) * (np.arange(0, Y + 1) + 0.5),
+                {"axis": "Y"},
+            ),
+            "ZG": (
+                ["ZG"],
+                np.arange(Z),
+                {"axis": "Z"},
+            ),
+            "ZC": (
+                ["ZC"],
+                np.arange(Z + 1) + 0.5,
+                {"axis": "Z"},
+            ),
+            "lon": (["XG"], 2 * np.pi / X * np.arange(0, X)),
+            "lat": (["YG"], 2 * np.pi / (Y) * np.arange(0, Y)),
+            "depth": (["ZG"], np.arange(Z)),
+            "time": (["time"], TIME, {"axis": "T"}),
+        },
+    ).pipe(
+        sgrid._attach_sgrid_metadata,
+        sgrid.SGrid2DMetadata(
+            cf_role="grid_topology",
+            topology_dimension=2,
+            node_dimensions=("XG", "YG"),
+            face_dimensions=(
+                sgrid.FaceNodePadding("XC", "XG", sgrid.Padding.BOTH),
+                sgrid.FaceNodePadding("YC", "YG", sgrid.Padding.BOTH),
+            ),
+            node_coordinates=("lon", "lat"),
+            vertical_dimensions=(sgrid.FaceNodePadding("ZC", "ZG", sgrid.Padding.BOTH),),
         ),
     ),
     "2d_left_unrolled_cone": _unrolled_cone_curvilinear_grid().pipe(
@@ -402,8 +402,8 @@ _COMODO_TO_2D_SGRID = {  # Note "2D SGRID" here is meant in the context of SGRID
 _DATASET_NAME_TO_SGRID_NAME = {
     "ds_2d_left": "ds_2d_padded_high",
     "ds_2d_right": "ds_2d_padded_low",
-    "ds_2d_outer": "ds_2d_padded_none",
-    "ds_2d_inner": "ds_2d_padded_both",
+    "ds_2d_outer": "ds_2d_padded_both",
+    "ds_2d_inner": "ds_2d_padded_none",
 }
 
 

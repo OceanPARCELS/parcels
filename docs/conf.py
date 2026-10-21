@@ -11,11 +11,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import datetime
 import inspect
 import os
 import sys
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = (Path(__file__).parent / "..").resolve()
@@ -44,6 +44,7 @@ extensions = [
     "sphinxcontrib.mermaid",
     "sphinx_design",
     "autoapi.extension",
+    "notfound.extension",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -61,7 +62,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Parcels"
-copyright = f"{datetime.datetime.now().year}, The Parcels Team"
+copyright = f"{datetime.now().year}, The Parcels Team"
 author = "The Parcels Team"
 
 linkcheck_ignore = [
@@ -122,6 +123,7 @@ exclude_patterns = [
     "jupyter_execute",
     "**.ipynb_checkpoints",
     ".jupyter_cache",
+    "paper-v4/*",
 ]
 
 # The reST default role (used for this markup: `text`) to use for all
@@ -512,9 +514,10 @@ epub_exclude_files = ["search.html"]
 # epub_use_index = True
 
 # -- Options for MyST parser ----------------------------------------------
-myst_heading_anchors = 3
+myst_heading_anchors = 4
 
 myst_enable_extensions = ["substitution", "amsmath", "dollarmath"]
+myst_substitutions = {"version": os.environ.get("READTHEDOCS_VERSION_NAME", version)}
 
 # -- Options for MyST-nb --------------------------------------------------
 nb_execution_mode = "cache"

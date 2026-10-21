@@ -7,21 +7,22 @@ import parcels._sgrid as sgrid
 from parcels._core.utils.time import timedelta_to_float
 
 
-def simple_UV_dataset(dims=(360, 2, 30, 4), maxdepth=1, mesh="spherical"):
+def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh="spherical"):
     max_lon = 180.0 if mesh == "spherical" else 1e6
     max_lat = 90.0 if mesh == "spherical" else 1e6
+    shape = (n_times, nz, ny, nx)
 
     return xr.Dataset(
-        {"U": (["time", "depth", "YG", "XG"], np.zeros(dims)), "V": (["time", "depth", "YG", "XG"], np.zeros(dims))},
+        {"U": (["time", "depth", "YG", "XG"], np.zeros(shape)), "V": (["time", "depth", "YG", "XG"], np.zeros(shape))},
         coords={
-            "time": (["time"], xr.date_range("2000", "2001", dims[0]), {"axis": "T"}),
-            "depth": (["depth"], np.linspace(0, maxdepth, dims[1]), {"axis": "Z"}),
-            "YC": (["YC"], np.arange(dims[2]) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(dims[2]), {"axis": "Y", "c_grid_axis_shift": -0.5}),
-            "XC": (["XC"], np.arange(dims[3]) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(dims[3]), {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "lat": (["YG"], np.linspace(-max_lat, max_lat, dims[2]), {"axis": "Y", "c_grid_axis_shift": -0.5}),
-            "lon": (["XG"], np.linspace(-max_lon, max_lon, dims[3]), {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "time": (["time"], xr.date_range("2000", "2001", n_times), {"axis": "T"}),
+            "depth": (["depth"], np.linspace(0, maxdepth, nz), {"axis": "Z"}),
+            "YC": (["YC"], np.arange(ny) + 0.5, {"axis": "Y"}),
+            "YG": (["YG"], np.arange(ny), {"axis": "Y"}),
+            "XC": (["XC"], np.arange(nx) + 0.5, {"axis": "X"}),
+            "XG": (["XG"], np.arange(nx), {"axis": "X"}),
+            "lat": (["YG"], np.linspace(-max_lat, max_lat, ny), {"axis": "Y"}),
+            "lon": (["XG"], np.linspace(-max_lon, max_lon, nx), {"axis": "X"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -36,6 +37,35 @@ def simple_UV_dataset(dims=(360, 2, 30, 4), maxdepth=1, mesh="spherical"):
             ),
             vertical_dimensions=(sgrid.FaceNodePadding("ZC", "depth", sgrid.Padding.BOTH),),
         ),
+    )
+
+
+def simple_UV_sigma_dataset(
+    n_times=360, nz=2, ny=30, nx=4, bottom_depth=None, eta=None, mesh="flat", start_time="2000-01-01"
+):
+    """simple_UV_dataset with zero U, V and W and a time-varying (4D) depth on the cell centres: nz sigma interfaces from the surface (depth -eta) to bottom_depth ((YC, XC) array, meters; None for a flat bottom at 1 m); eta is None or (time, YC, XC), hourly from start_time."""
+    if bottom_depth is None:
+        bottom_depth = np.ones((ny, nx))
+    if np.shape(bottom_depth) != (ny, nx):
+        raise ValueError(
+            f"bottom_depth must be a (YC, XC) array of shape {(ny, nx)}, got shape {np.shape(bottom_depth)}"
+        )
+    if eta is None:
+        eta = np.zeros((n_times, ny, nx))
+    elif np.shape(eta) != (n_times, ny, nx):
+        raise ValueError(f"eta must be a (time, YC, XC) array of shape {(n_times, ny, nx)}, got shape {np.shape(eta)}")
+
+    sigma = np.linspace(0.0, 1.0, nz)
+    total_depth = bottom_depth[np.newaxis, :, :] + eta
+    zf = (
+        sigma[np.newaxis, :, np.newaxis, np.newaxis] * total_depth[:, np.newaxis] - eta[:, np.newaxis]
+    )  # (time, depth, YC, XC)
+
+    ds = simple_UV_dataset(n_times=n_times, nz=nz, ny=ny, nx=nx, mesh=mesh)
+    ds["W"] = (["time", "depth", "YG", "XG"], np.zeros((n_times, nz, ny, nx)))
+    return ds.assign_coords(
+        time=(["time"], xr.date_range(start_time, periods=n_times, freq="1h"), {"axis": "T"}),
+        depth=(["time", "depth", "YC", "XC"], zf, {"axis": "Z"}),
     )
 
 
@@ -69,11 +99,11 @@ def radial_rotation_dataset(xdim=200, ydim=200):  # Define 2D flat, square field
             "time": (["time"], [np.timedelta64(0, "s"), np.timedelta64(10, "D")], {"axis": "T"}),
             "depth": (["depth"], np.array([0.0]), {"axis": "Z"}),
             "YC": (["YC"], np.arange(ydim) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(ydim), {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(xdim), {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "lat": (["YG"], lat, {"axis": "Y", "c_grid_axis_shift": 0.5}),
-            "lon": (["XG"], lon, {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y"}),
+            "lon": (["XG"], lon, {"axis": "X"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -113,11 +143,11 @@ def moving_eddy_dataset(xdim=2, ydim=2):
             "time": (["time"], time, {"axis": "T"}),
             "depth": (["depth"], np.array([0.0]), {"axis": "Z"}),
             "YC": (["YC"], np.arange(ydim) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(ydim), {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(xdim), {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "lat": (["YG"], lat, {"axis": "Y", "c_grid_axis_shift": 0.5}),
-            "lon": (["XG"], lon, {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y"}),
+            "lon": (["XG"], lon, {"axis": "X"}),
         },
         attrs={
             "u_0": u_0,
@@ -174,11 +204,11 @@ def decaying_moving_eddy_dataset(xdim=2, ydim=2):
             "time": (["time"], time, {"axis": "T"}),
             "depth": (["depth"], np.array([0.0]), {"axis": "Z"}),
             "YC": (["YC"], np.arange(ydim) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(ydim), {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(xdim), {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "lat": (["YG"], lat, {"axis": "Y", "c_grid_axis_shift": 0.5}),
-            "lon": (["XG"], lon, {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y"}),
+            "lon": (["XG"], lon, {"axis": "X"}),
         },
         attrs={
             "u_0": u_0,
@@ -276,9 +306,9 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
             "P": (["YC", "XC"], P),
         },
         coords={
-            "YC": (["YC"], np.arange(ydim) - 0.5, {"axis": "Y", "c_grid_axis_shift": +0.5}),
+            "YC": (["YC"], np.arange(ydim) - 0.5, {"axis": "Y"}),
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
-            "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X", "c_grid_axis_shift": +0.5}),
+            "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
             "lat": (["YG"], lat, {"axis": "Y"}),
             "lon": (["XG"], lon, {"axis": "X"}),
@@ -344,9 +374,9 @@ def stommel_gyre_dataset(xdim=200, ydim=200, grid_type="A"):
     return xr.Dataset(
         {"U": (Udims, U), "V": (Vdims, V), "P": (["YG", "XG"], P)},
         coords={
-            "YC": (["YC"], np.arange(ydim) - 0.5, {"axis": "Y", "c_grid_axis_shift": +0.5}),
+            "YC": (["YC"], np.arange(ydim) - 0.5, {"axis": "Y"}),
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
-            "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X", "c_grid_axis_shift": +0.5}),
+            "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
             "lat": (["YG"], lat, {"axis": "Y"}),
             "lon": (["XG"], lon, {"axis": "X"}),

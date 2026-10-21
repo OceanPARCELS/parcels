@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import enum
 import re
+import sys
 from collections.abc import Callable, Hashable, Iterable
 from dataclasses import dataclass
 from textwrap import indent
-from typing import Any, Literal, Protocol, Self, cast, overload
+from typing import IO, Any, Literal, Protocol, Self, cast, overload
 
 import xarray as xr
 
@@ -137,8 +138,21 @@ class SGrid2DMetadata(_AttrsSerializable):
     def __repr__(self) -> str:
         return repr_from_dunder_dict(self)
 
-    def __str__(self) -> str:
-        return _grid2d_to_ascii(self)
+    def describe(self, buf: IO | None = None) -> None:
+        """
+        ASCII summary of the SGRID 2D metadata, showing the relationship
+        between face and node dimensions.
+
+        Parameters
+        ----------
+        buf : file-like, default: sys.stdout
+            writable buffer
+        """
+        if buf is None:
+            buf = sys.stdout
+        assert buf is not None
+
+        buf.write(_grid2d_to_ascii(self))
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SGrid2DMetadata):
@@ -253,8 +267,21 @@ class SGrid3DMetadata(_AttrsSerializable):
     def __repr__(self) -> str:
         return repr_from_dunder_dict(self)
 
-    def __str__(self) -> str:
-        return _grid3d_to_ascii(self)
+    def describe(self, buf: IO | None = None) -> None:
+        """
+        ASCII summary of the SGRID 3D metadata, showing the relationship
+        between face and node dimensions.
+
+        Parameters
+        ----------
+        buf : file-like, default: sys.stdout
+            writable buffer
+        """
+        if buf is None:
+            buf = sys.stdout
+        assert buf is not None
+
+        buf.write(_grid3d_to_ascii(self))
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SGrid3DMetadata):

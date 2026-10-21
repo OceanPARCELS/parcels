@@ -17,6 +17,8 @@ __all__ = [
     "chunks",
     "dask_array",
     "numpy_array",
+    "out_of_bounds_vectorized_indexer",
+    "out_of_bounds_vectorized_indexer_key",
     "vectorized_indexer",
     "vectorized_indexer_key",
 ]
@@ -188,3 +190,43 @@ def vectorized_indexer(shape: tuple[int, ...], **kwargs) -> st.SearchStrategy[Ve
     Keyword arguments are passed on to :func:`vectorized_indexer_key`.
     """
     return vectorized_indexer_key(shape, **kwargs).map(VectorizedIndexer)
+
+
+@st.composite
+def out_of_bounds_vectorized_indexer_key(draw, shape: tuple[int, ...], **kwargs) -> tuple[slice | np.ndarray, ...]:
+    """Strategy for vectorized indexing keys where at least one integer array has an out-of-bounds index.
+
+    An index ``i`` is out of bounds for a dimension of ``size`` if ``i >= size`` or ``i < -size``.
+
+    Keyword arguments are passed on to :func:`vectorized_indexer_key`, except that at
+    least one entry is always a non-empty integer array.
+    """
+    kwargs["min_arrays"] = max(kwargs.get("min_arrays", 1), 1)
+    kwargs["min_index_side"] = max(kwargs.get("min_index_side", 1), 1)
+    key = list(draw(vectorized_indexer_key(shape, **kwargs)))
+
+    array_dims = [d for d, k in enumerate(key) if isinstance(k, np.ndarray)]
+    d = draw(st.sampled_from(array_dims))
+    size = shape[d]
+    arr = key[d].copy()
+
+    # Keep within int32 range, as that's the smallest index dtype drawn
+    int32 = np.iinfo(np.int32)
+    bad_value = draw(
+        st.one_of(
+            st.integers(min_value=size, max_value=int32.max),
+            st.integers(min_value=int32.min, max_value=-size - 1),
+        )
+    )
+    flat_position = draw(st.integers(min_value=0, max_value=arr.size - 1))
+    arr.flat[flat_position] = bad_value
+    key[d] = arr
+    return tuple(key)
+
+
+def out_of_bounds_vectorized_indexer(shape: tuple[int, ...], **kwargs) -> st.SearchStrategy[VectorizedIndexer]:
+    """Strategy for :class:`xarray.core.indexing.VectorizedIndexer` objects with at least one out-of-bounds index.
+
+    Keyword arguments are passed on to :func:`out_of_bounds_vectorized_indexer_key`.
+    """
+    return out_of_bounds_vectorized_indexer_key(shape, **kwargs).map(VectorizedIndexer)

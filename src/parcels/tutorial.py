@@ -1,7 +1,8 @@
+from parcels._datasets.remote import _DATA_HOME
 from parcels._datasets.remote import list_remote_datasets as _list_remote_datasets
 from parcels._datasets.remote import open_remote_dataset as _open_remote_dataset
 
-__all__ = ["list_datasets", "open_dataset"]
+__all__ = ["cache_path", "list_datasets", "open_dataset"]
 
 
 def list_datasets() -> list[str]:
@@ -34,3 +35,6 @@ def open_dataset(name: str):
         The requested dataset.
     """
     return _open_remote_dataset(name, purpose="tutorial")
+
+
+cache_path = _DATA_HOME.resolve()

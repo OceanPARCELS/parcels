@@ -22,7 +22,7 @@ def test_fieldKh_Brownian(mesh):
     kh_meridional = 50
     mesh_conversion = 1 / 1852.0 / 60 if mesh == "spherical" else 1
 
-    ds = simple_UV_dataset(dims=(2, 1, 2, 2), mesh=mesh)
+    ds = simple_UV_dataset(n_times=2, nz=1, ny=2, nx=2, mesh=mesh)
     ds["lon"].data = np.array([-1e6, 1e6])
     ds["lat"].data = np.array([-1e6, 1e6])
     fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
@@ -53,7 +53,7 @@ def test_fieldKh_SpatiallyVaryingDiffusion(mesh, kernel):
     ydim, xdim = 100, 200
 
     mesh_conversion = 1 / 1852.0 / 60 if mesh == "spherical" else 1
-    ds = simple_UV_dataset(dims=(2, 1, ydim, xdim), mesh=mesh)
+    ds = simple_UV_dataset(n_times=2, nz=1, ny=ydim, nx=xdim, mesh=mesh)
     ds["lon"].data = np.linspace(-1e6, 1e6, xdim)
     ds["lat"].data = np.linspace(-1e6, 1e6, ydim)
 

@@ -15,7 +15,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 import parcels
 ```
 
-The cell below provides the code needed to run this simulation - but because it is a time-consuming run (~20 minutes) and requires a login on the Copernicus Marine Service, we also provide the output file for download [here](https://github.com/Parcels-code/parcels-data/raw/refs/heads/main/data-parquet/copernicusmarine_globalsurface.parquet).
+The cell below provides the code needed to run this simulation - but because it is a time-consuming run (~20 minutes) and requires a login on the Copernicus Marine Service, we also provide the output file for download [here](https://raw.githubusercontent.com/Parcels-code/parcels-data/refs/heads/main/data-parquet/copernicusmarine_globalsurface.parquet).
 
 ```python
 particle_filename = "copernicusmarine_globalsurface.parquet"

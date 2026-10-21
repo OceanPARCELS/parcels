@@ -15,7 +15,7 @@ If you are doing any kind of Lagrangian modelling and/or analysis check out the 
 
 ```{image} https://img.shields.io/badge/Zulip-50ADFF?style=for-the-badge&logo=Zulip&logoColor=white
 :width: 30%
-:target: https://clam-community.zulipchat.com/
+:target: https://clam-community.zulipchat.com/login/
 ```
 
 +++

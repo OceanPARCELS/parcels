@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast, overload
 
 import cftime
 import numpy as np
+import numpy.typing as npt
 
 from parcels._repr_utils import timeinterval_repr
 
@@ -131,7 +133,7 @@ def is_compatible(
         return False
 
     try:
-        t1 - t2
+        t1 - t2  # type: ignore[operator]  # probing compatibility at runtime is the point
     except Exception:
         return False
     else:
@@ -163,7 +165,7 @@ def get_datetime_type_calendar(
     return type(example_datetime), calendar
 
 
-_TD_PRECISION_GETTER_FOR_UNIT = (
+_TD_PRECISION_GETTER_FOR_UNIT: tuple[tuple[Callable[[timedelta], int], Literal["D", "s", "us"]], ...] = (
     (lambda dt: dt.days, "D"),
     (lambda dt: dt.seconds, "s"),
     (lambda dt: dt.microseconds, "us"),
@@ -189,7 +191,13 @@ def maybe_convert_python_timedelta_to_numpy(dt: timedelta | np.timedelta64) -> n
         raise ValueError(f"Could not convert {dt!r} to np.timedelta64.") from e
 
 
-def timedelta_to_float(dt: float | timedelta | np.timedelta64) -> float:
+@overload
+def timedelta_to_float(dt: float | timedelta | np.timedelta64) -> float: ...
+@overload
+def timedelta_to_float(dt: npt.NDArray[Any]) -> npt.NDArray[np.float64]: ...
+def timedelta_to_float(
+    dt: float | timedelta | np.timedelta64 | npt.NDArray[Any],
+) -> float | npt.NDArray[np.float64]:
     """Convert a timedelta to a float in seconds."""
     if isinstance(dt, timedelta):
         return dt.total_seconds()
@@ -197,7 +205,7 @@ def timedelta_to_float(dt: float | timedelta | np.timedelta64) -> float:
         return float(dt / np.timedelta64(1, "s"))
     if hasattr(dt, "dtype"):
         if np.issubdtype(dt.dtype, np.timedelta64):  # in case of array
-            return (dt / np.timedelta64(1, "s")).astype(float)
+            return (cast("npt.NDArray[Any]", dt) / np.timedelta64(1, "s")).astype(float)
         elif np.issubdtype(dt.dtype, np.object_):  # in case of array of timedeltas
             try:
                 f = np.vectorize(lambda x: x.total_seconds())

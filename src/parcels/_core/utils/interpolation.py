@@ -22,7 +22,7 @@ def phi1D_quad(xsi: float) -> list[float]:
     return phi
 
 
-def phi2D_lin(eta: float, xsi: float) -> list[float]:
+def phi2D_lin(eta: float, xsi: float) -> np.ndarray:
     phi = np.column_stack([(1-xsi) * (1-eta),
                               xsi  * (1-eta),
                               xsi  *    eta ,

@@ -344,7 +344,7 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
 
     Notes
     -----
-    The NEMO model (https://www.nemo-ocean.eu/) is used by a variety of oceanographic institutions around the world.
+    The NEMO model (https://nemo-ocean.eu/) is used by a variety of oceanographic institutions around the world.
     Output from these models may differ subtly in terms of variable names and metadata conventions.
     This function attempts to standardize these differences to create a Parcels FieldSet.
     If you encounter issues with your specific NEMO dataset, please open an issue on the Parcels GitHub repository with details about your dataset.
@@ -619,10 +619,10 @@ def croco_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.D
             node_dimensions=("lon", "lat"),
             node_coordinates=("lon", "lat"),
             face_dimensions=(
-                sgrid.FaceNodePadding("xi_u", "xi_rho", sgrid.Padding.HIGH),
-                sgrid.FaceNodePadding("eta_v", "eta_rho", sgrid.Padding.HIGH),
+                sgrid.FaceNodePadding("xi_u", "xi_rho", sgrid.Padding.NONE),
+                sgrid.FaceNodePadding("eta_v", "eta_rho", sgrid.Padding.NONE),
             ),
-            vertical_dimensions=(sgrid.FaceNodePadding("s_rho", "depth", sgrid.Padding.HIGH),),
+            vertical_dimensions=(sgrid.FaceNodePadding("s_rho", "depth", sgrid.Padding.NONE),),
         ).to_attrs(),
     )
 

@@ -32,13 +32,13 @@ def DeleteAnyError(particles, fieldset):
     particles[any_error].state = parcels.StatusCode.Delete
 ```
 
-But of course, you can also write code for more sophisticated behaviour than just deleting the particle. It's up to you! Note that if you don't delete the particle, you will have to update the `particles.state = parcels.StatusCode.Evaluate` yourself. For example:
+But of course, you can also write code for more sophisticated behaviour than just deleting the particle. It's up to you! Note that if you don't delete the particle, you will have to update the `particles.state = parcels.StatusCode.Success` yourself. For example:
 
 ```
 def Move1DegreeWest(particles, fieldset):
     out_of_bounds = particles.state == parcels.StatusCode.ErrorOutOfBounds
     particles[out_of_bounds].dx -= 1.0
-    particles[out_of_bounds].state = parcels.StatusCode.Evaluate
+    particles[out_of_bounds].state = parcels.StatusCode.Success
 ```
 
 Or, if you want to make sure that particles don't escape through the water surface
@@ -51,8 +51,8 @@ def KeepInOcean(particles, fieldset):
     # move particles to surface
     particles[through_surface].dz = fieldset.surface - particles[through_surface].z
 
-    # change state from error to evaluate
-    particles[through_surface].state = parcels.StatusCode.Evaluate
+    # change state from error to success
+    particles[through_surface].state = parcels.StatusCode.Success
 ```
 
 Kernel functions such as the ones above can then be added to the list of kernels in `pset.execute()`.
@@ -63,7 +63,7 @@ Let's add the `KeepInOcean` Kernel to an particle simulation where particles mov
 import numpy as np
 from parcels._datasets.structured.generated import simple_UV_dataset
 
-ds = simple_UV_dataset(dims=(1, 2, 5, 4), mesh="flat")
+ds = simple_UV_dataset(n_times=1, nz=2, ny=5, nx=4, mesh="flat")
 
 dx, dy = 1.0 / len(ds.XG), 1.0 / len(ds.YG)
 

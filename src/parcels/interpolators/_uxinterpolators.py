@@ -54,7 +54,7 @@ class UxConstantFaceLinearZF(ScalarInterpolator):
         ti, zi, fi = np.broadcast_arrays(
             grid_positions["T"]["index"], grid_positions["Z"]["index"], grid_positions["FACE"]["index"]
         )
-        z = particle_positions["z"]
+        zeta = grid_positions["Z"]["bcoord"]
 
         tdim, zdim, fdim = field.data.dims
 
@@ -75,9 +75,7 @@ class UxConstantFaceLinearZF(ScalarInterpolator):
         fzkp1 = _zsample(zi + 1)
 
         # Then, do piecewise linear interpolation in the vertical direction
-        zk = field.grid.z.values[zi]
-        zkp1 = field.grid.z.values[zi + 1]
-        return (fzk * (zkp1 - z) + fzkp1 * (z - zk)) / (zkp1 - zk)  # Linear interpolation in the vertical direction
+        return fzk * (1 - zeta) + fzkp1 * zeta
 
 
 class UxLinearNodeConstantZC(ScalarInterpolator):
@@ -129,7 +127,7 @@ class UxLinearNodeLinearZF(ScalarInterpolator):
         ti, zi, fi = np.broadcast_arrays(
             grid_positions["T"]["index"], grid_positions["Z"]["index"], grid_positions["FACE"]["index"]
         )
-        z = particle_positions["z"]
+        zeta = grid_positions["Z"]["bcoord"]
         bcoords = xr.DataArray(grid_positions["FACE"]["bcoord"], dims=("points", "nodes"))
         node_ids = field.grid.uxgrid.face_node_connectivity[fi, :].values
 
@@ -153,9 +151,7 @@ class UxLinearNodeLinearZF(ScalarInterpolator):
         fzkp1 = _zsample(zi + 1)
 
         # Then, do piecewise linear interpolation in the vertical direction
-        zk = field.grid.z.values[zi]
-        zkp1 = field.grid.z.values[zi + 1]
-        value = (fzk * (zkp1 - z) + fzkp1 * (z - zk)) / (zkp1 - zk)  # Linear interpolation in the vertical direction
+        value = fzk * (1 - zeta) + fzkp1 * zeta
         return value.compute() if is_dask_collection(value) else value
 
 

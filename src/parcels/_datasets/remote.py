@@ -49,6 +49,7 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m_uo-vo_31.00E-33.00E_33.00S-30.00S_0.49-2225.08m_2024-01-01-2024-02-01.nc",
         "data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_so_31.00E-33.00E_33.00S-30.00S_0.49-2225.08m_2024-01-01-2024-02-01.nc",
         "data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_thetao_31.00E-33.00E_33.00S-30.00S_0.49-2225.08m_2024-01-01-2024-02-01.nc",
+        "data/CopernicusMarine_data_for_Argo_tutorial/cmems_obs-wind_glo_phy_my_l4_0.125deg_PT1H_multi-vars_31.06E-32.94E_32.94S-30.06S_2024-01-01-2024-02-01.nc",
     ]
     + ["data/CopernicusMarine_data_for_stuck_particles_tutorial/cmems_mod_glo_phy_my_0.083deg_P1D-m_NL.nc"]
     # + [
@@ -57,6 +58,7 @@ _ODIE_REGISTRY_FILES: list[str] = (
     # ]
     + [
         "data/Delft3D_data/Rotterdam_tiny.nc",
+        "data/Delft3D_data/delft3d-fm-raw.nc",
     ]
     + [
         "data/FESOM_periodic_channel/fesom_channel.nc",
@@ -128,6 +130,13 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data-zarr/Benchmarks_MOi_data_metadata-only/V.zip",
         "data-zarr/Benchmarks_MOi_data_metadata-only/W.zip",
         "data-zarr/Benchmarks_MOi_data_metadata-only/mesh.zip",
+    ]
+    + [
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_00_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_06_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_12_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_01_18_subset.nc",
+        "data/AIFS-meteo-data/aifs-single_2025_07_02_00_subset.nc",
     ]
 )
 
@@ -229,7 +238,9 @@ _DATASET_KEYS_AND_CONFIGS: dict[str, tuple[_ParcelsDataset, _Purpose]] = dict([
     # ("Peninsula_data/T", (_V3Dataset(_ODIE,"data/Peninsula_data/peninsulaT.nc"), _Purpose.TUTORIAL)),
     # ("GlobCurrent_example_data/data", (_V3Dataset(_ODIE,"data/GlobCurrent_example_data/*000000-GLOBCURRENT-L4-CUReul_hs-ALT_SUM-v02.0-fv01.0.nc", pre_decode_cf_callable=patch_dataset_v4_compat), _Purpose.TUTORIAL)),
     ("CopernicusMarine_data_for_Argo_tutorial/data", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_Argo_tutorial/cmems_mod_glo_phy-*.nc"), _Purpose.TUTORIAL)),
+    ("CopernicusMarine_data_for_Argo_tutorial/data_wind", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_Argo_tutorial/cmems_obs-wind_glo_phy*.nc"), _Purpose.TUTORIAL)),
     ("Delft3D_data/Rotterdam_tiny", (_V3Dataset(_ODIE,"data/Delft3D_data/Rotterdam_tiny.nc"), _Purpose.TUTORIAL)),
+    ("Delft3D_data/delft3d-fm-raw", (_V3Dataset(_ODIE,"data/Delft3D_data/delft3d-fm-raw.nc"), _Purpose.TUTORIAL)),
     ("CopernicusMarine_data_for_stuck_particles_tutorial/data", (_V3Dataset(_ODIE,"data/CopernicusMarine_data_for_stuck_particles_tutorial/cmems_mod_glo_phy_my_0.083deg_P1D-m_NL.nc"), _Purpose.TUTORIAL)),
     # ("DecayingMovingEddy_data/U", (_V3Dataset(_ODIE,"data/DecayingMovingEddy_data/decaying_moving_eddyU.nc"), _Purpose.TUTORIAL)),
     # ("DecayingMovingEddy_data/V", (_V3Dataset(_ODIE,"data/DecayingMovingEddy_data/decaying_moving_eddyV.nc"), _Purpose.TUTORIAL)),
@@ -254,6 +265,7 @@ _DATASET_KEYS_AND_CONFIGS: dict[str, tuple[_ParcelsDataset, _Purpose]] = dict([
     # ("SWASH_data/data", (_V3Dataset(_ODIE,"data/SWASH_data/field_00655*.nc"), _Purpose.TUTORIAL)),
     # ("WOA_data/data", (_V3Dataset(_ODIE,"data/WOA_data/woa18_decav_t*_04.nc", _preprocess_set_cf_calendar_360_day), _Purpose.TUTORIAL)),
     ("CROCOidealized_data/data", (_V3Dataset(_ODIE,"data/CROCOidealized_data/CROCO_idealized.nc"), _Purpose.TUTORIAL)),
+    ("AIFSmeteo/data", (_V3Dataset(_ODIE,"data/AIFS-meteo-data/*.nc"), _Purpose.TUTORIAL))
 ] + [
     ("Benchmarks_FESOM2-baroclinic-gyre/data", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/data.zip', zarr_format=2), _Purpose.TESTING)),
     ("Benchmarks_FESOM2-baroclinic-gyre/grid", (_ZarrZipDataset(_ODIE, 'data-zarr/Benchmarks_FESOM2-baroclinic-gyre/grid.zip', zarr_format=2),_Purpose.TESTING)),
