@@ -14,6 +14,7 @@ from parcels._core.index_search import (
     _search_1d_array,
     _search_1d_columns,
 )
+from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._core.utils.time import timedelta_to_float
 from parcels._core.xgrid import (
     XGrid,
@@ -74,10 +75,14 @@ def test_xgrid_axes(fieldset):
 
 
 @pytest.mark.parametrize("ds", [datasets["ds_2d_left"]])
-@pytest.mark.parametrize("mesh", ["flat", "spherical"])
-def test_uxgrid_mesh(ds, mesh):
-    grid = FieldSet.from_sgrid_conventions(ds, mesh=mesh).data_g.grid
-    assert mesh in grid._mesh.__class__.__name__.lower()
+@pytest.mark.parametrize("mesh", [FlatMesh, SphericalMesh])
+def test_xgrid_mesh_inferred_from_units(ds, mesh):
+    ds = ds.copy(deep=True)
+    if mesh is SphericalMesh:
+        ds["lon"].attrs["units"] = "degrees_east"
+        ds["lat"].attrs["units"] = "degrees_north"
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
+    assert isinstance(grid.mesh, mesh)
 
 
 @pytest.mark.skip(

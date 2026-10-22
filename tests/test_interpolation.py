@@ -14,7 +14,7 @@ from parcels import (
     particlefile_to_v3_zarr,
 )
 from parcels._core.index_search import _search_time_index
-from parcels._core.mesh import get_mesh
+from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._datasets.structured.generated import simple_UV_dataset
 from parcels.interpolators import (
     CGrid_Velocity,
@@ -118,7 +118,7 @@ def test_raw_2d_interpolation(field, interpolator, t, z, y, x, expected):
     np.testing.assert_equal(value, expected)
 
 
-@pytest.mark.parametrize("mesh", ["flat", "spherical"])
+@pytest.mark.parametrize("mesh", [FlatMesh(), SphericalMesh()])
 @pytest.mark.parametrize(
     "func, t, z, y, x, expected",
     [
@@ -139,7 +139,7 @@ def test_raw_2d_interpolation(field, interpolator, t, z, y, x, expected):
     ],
 )
 def test_spatial_slip_interpolation(field, func, t, z, y, x, expected, mesh):
-    field.grid._mesh = get_mesh(mesh)
+    field.grid.mesh = mesh
     field.data[:] = 1.0
     field.data[:, :, 1:3, 1:3] = 0.0  # Set zero land value to test spatial slip
     U = field
@@ -148,7 +148,7 @@ def test_spatial_slip_interpolation(field, func, t, z, y, x, expected, mesh):
 
     velocities = UV[t, z, y, x]
     expected = np.array(expected)
-    if mesh == "spherical":
+    if mesh.is_spherical():
         expected[0] = expected[0] / (1852 * 60.0 * np.cos(np.radians(y)))
         expected[1] = expected[1] / (1852 * 60.0)
     np.testing.assert_array_almost_equal(velocities, expected)
@@ -186,15 +186,16 @@ def test_invdistland_interpolation(field, interpolator, t, z, y, x, expected):
     np.testing.assert_array_almost_equal(value, expected)
 
 
-@pytest.mark.parametrize("mesh", ["spherical", "flat"])
+@pytest.mark.parametrize("mesh", [SphericalMesh(), FlatMesh()])
 def test_interpolation_mesh_type(mesh, npart=10):
-    ds = simple_UV_dataset(mesh=mesh)
+    mesh_str = "spherical" if mesh.is_spherical() else "flat"
+    ds = simple_UV_dataset(mesh=mesh_str)
     ds["U"].data[:] = 1.0
-    fieldset = FieldSet.from_sgrid_conventions(ds)
+    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
 
     lat = 30.0
     time = 0.0
-    u_expected = 1.0 if mesh == "flat" else 1.0 / (1852 * 60 * np.cos(np.radians(lat)))
+    u_expected = 1.0 / (1852 * 60 * np.cos(np.radians(lat))) if mesh.is_spherical() else 1.0
 
     with pytest.warns(RuntimeWarning, match="Sampling of velocities should normally be done"):
         assert fieldset.U.eval(time, 0, lat, 0) == 1.0

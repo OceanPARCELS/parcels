@@ -49,7 +49,7 @@ class ModelData(ABC):
 
     @property
     def mesh(self) -> FlatMesh | SphericalMesh:
-        return self.grid._mesh
+        return self.grid.mesh
 
     @abstractmethod
     def construct_fields(self) -> list[Field | VectorField]: ...
@@ -316,7 +316,6 @@ def assert_vector_field_components_in_dataset(ds: xr.Dataset, vector_fields: pty
 
 def create_empty_constant_field_model(mesh: SphericalMesh | FlatMesh) -> StructuredModelData:
     """Create a empty model for constant fields with the given mesh type."""
-    mesh_: ptyping.TMesh = "flat" if isinstance(mesh, FlatMesh) else mesh
     unit = "m" if isinstance(mesh, FlatMesh) else "degrees"
     return StructuredModelData.from_sgrid_conventions(
         xr.Dataset(
@@ -339,7 +338,7 @@ def create_empty_constant_field_model(mesh: SphericalMesh | FlatMesh) -> Structu
                 ),
             ),
         ),
-        mesh=mesh_,
+        mesh=mesh,
         vector_fields={},
     )
 
@@ -421,7 +420,7 @@ def _get_mesh_type_from_sgrid_dataset(ds_sgrid: xr.Dataset) -> ptyping.TMesh:
 
     fpoint_x, fpoint_y = sgrid_metadata.node_coordinates
 
-    if _is_coordinate_in_degrees(ds_sgrid[fpoint_x]) ^ _is_coordinate_in_degrees(ds_sgrid[fpoint_x]):
+    if _is_coordinate_in_degrees(ds_sgrid[fpoint_x]) ^ _is_coordinate_in_degrees(ds_sgrid[fpoint_y]):
         msg = (
             f"Mismatch in units between X and Y coordinates.\n"
             f"  Coordinate {ds_sgrid[fpoint_x]!r} attrs: {ds_sgrid[fpoint_x].attrs}\n"
@@ -429,7 +428,7 @@ def _get_mesh_type_from_sgrid_dataset(ds_sgrid: xr.Dataset) -> ptyping.TMesh:
         )
         raise ValueError(msg)
 
-    return "spherical" if _is_coordinate_in_degrees(ds_sgrid[fpoint_x]) else "flat"
+    return SphericalMesh() if _is_coordinate_in_degrees(ds_sgrid[fpoint_x]) else FlatMesh()
 
 
 def _default_vector_field_components(data_vars: Sequence[Hashable]) -> ptyping.VectorFields:

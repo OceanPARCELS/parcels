@@ -316,9 +316,10 @@ class FieldSet:
         ----------
         ds : xarray.Dataset
             xarray.Dataset with SGRID convention metadata.
-        mesh : MeshType
-            MeshType indicating the type of mesh coordinates used during
-            velocity interpolation. Default is None, in which case the mesh type will be inferred
+        mesh : FlatMesh or SphericalMesh, optional
+            Mesh object indicating the type of mesh coordinates used during
+            velocity interpolation, e.g. ``FlatMesh()`` or ``SphericalMesh(radius=...)``.
+            Default is None, in which case the mesh type will be inferred
             from the units of the dataset coordinates.
         vector_fields : Mapping[str, tuple[str, ...]], optional
             Mapping of vector field names to tuples of component variable names in the dataset.

@@ -21,7 +21,7 @@ from parcels.interpolators import (
 
 def test_field_init_param_types():
     data = datasets_structured["ds_2d_left"]
-    model = StructuredModelData.from_sgrid_conventions(data, mesh="flat", vector_fields=NOTSET)
+    model = StructuredModelData.from_sgrid_conventions(data, vector_fields=NOTSET)
 
     with pytest.raises(TypeError, match="Expected a string for variable name, got int instead."):
         Field(name=123, model=model)
@@ -74,7 +74,7 @@ def test_field_init_fail_on_float_time_dim():
 def test_field_time_interval():
     """Test that field.time_interval delegates correctly to model.time_interval."""
     data = datasets_structured["ds_2d_left"]
-    model = StructuredModelData.from_sgrid_conventions(data, mesh="flat", vector_fields=NOTSET)
+    model = StructuredModelData.from_sgrid_conventions(data, vector_fields=NOTSET)
     field = Field(name="data_g", model=model)
     assert field.time_interval.left == np.datetime64("2000-01-01")
     assert field.time_interval.right == np.datetime64("2001-01-01")

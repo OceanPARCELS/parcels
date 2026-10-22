@@ -31,8 +31,8 @@ def fieldset_two_models():
         {"U_A_grid": "U_wind", "V_A_grid": "V_wind"}
     )
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
+    fset2 = FieldSet.from_sgrid_conventions(ds2, vector_fields={"UV_wind": ("U_wind", "V_wind")})
     fset2.add_context("my_value", 2.0)
     fset2.add_context("my_list", [1, 2, "hello"])
     fset2.add_constant_field("constant_field", 3.0)
@@ -98,7 +98,7 @@ def test_fieldset_gridset(fieldset):
 
 
 def test_fieldset_no_UV(tmp_parquet):
-    fieldset = FieldSet.from_sgrid_conventions(ds[["U_A_grid", "grid"]].rename({"U_A_grid": "P"}), mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds[["U_A_grid", "grid"]].rename({"U_A_grid": "P"}))
 
     def SampleP(particles, fieldset):
         particles.dx += fieldset.P[particles]
@@ -230,15 +230,15 @@ def test_default_vector_field_components(data_vars, expected):
 
 def test_multi_model_time_interval():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]]
-    fieldset = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds1)
 
     ds2 = ds1.copy().rename({"U_A_grid": "U2", "V_A_grid": "V2"})
     ds2["time"] = (ds2["time"].dims, ds2["time"].data + np.timedelta64(timedelta(days=1)), ds2["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds2)
 
     ds3 = ds1.copy().rename({"U_A_grid": "U3", "V_A_grid": "V3"})
     ds3["time"] = (ds3["time"].dims, ds3["time"].data + np.timedelta64(timedelta(days=2)), ds3["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds3, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds3)
 
     fieldset.add_constant_field("constant_field", 1.0)
 
@@ -250,15 +250,15 @@ def test_multi_model_time_interval():
 
 def test_multi_model_nonoverlapping_time_interval():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]]
-    fieldset = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds1)
 
     ds2 = ds1.copy().rename({"U_A_grid": "U2", "V_A_grid": "V2"})
     ds2["time"] = (ds2["time"].dims, ds2["time"].data + np.timedelta64(timedelta(days=1000)), ds2["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds2)
 
     ds3 = ds1.copy().rename({"U_A_grid": "U3", "V_A_grid": "V3"})
     ds3["time"] = (ds3["time"].dims, ds3["time"].data + np.timedelta64(timedelta(days=2000)), ds3["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds3, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds3)
 
     fieldset.add_constant_field("constant_field", 1.0)
 
@@ -370,8 +370,8 @@ def test_fieldset_add_error_on_duplicate_fields():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
     ds2 = ds1.copy()
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
+    fset2 = FieldSet.from_sgrid_conventions(ds2)
 
     with pytest.raises(ValueError, match="field names in common.*'U'"):
         fset1 + fset2
@@ -384,8 +384,8 @@ def test_fieldset_add():
         {"U_A_grid": "U_wind", "V_A_grid": "V_wind"}
     )
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
+    fset2 = FieldSet.from_sgrid_conventions(ds2, vector_fields={"UV_wind": ("U_wind", "V_wind")})
 
     fset = fset1 + fset2
 
@@ -408,7 +408,7 @@ def test_fieldset_add_different_meshes():
     )
     fset2 = FieldSet.from_sgrid_conventions(
         ds2,
-        mesh="spherical",  # earth
+        mesh=SphericalMesh(),  # earth
         vector_fields={"UV_wind": ("U_wind", "V_wind")},
     )
 
@@ -432,10 +432,10 @@ def test_fieldset_add_error_on_duplicate_context_values():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "grid"]].rename({"U_A_grid": "U1"})
     ds2 = datasets_structured["ds_2d_left"][["V_A_grid", "grid"]].rename({"V_A_grid": "V2"})
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
     fset1.add_context("kh", 1.0)
 
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fset2 = FieldSet.from_sgrid_conventions(ds2)
     fset2.add_context("kh", 2.0)
 
     with pytest.raises(ValueError, match="context value names in common.*'kh'"):
@@ -447,10 +447,10 @@ def test_fieldset_add_context_values():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "grid"]].rename({"U_A_grid": "U1"})
     ds2 = datasets_structured["ds_2d_left"][["V_A_grid", "grid"]].rename({"V_A_grid": "V2"})
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
     fset1.add_context("c1", 1.0)
 
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fset2 = FieldSet.from_sgrid_conventions(ds2)
     fset2.add_context("c2", 2.0)
 
     fset = fset1 + fset2

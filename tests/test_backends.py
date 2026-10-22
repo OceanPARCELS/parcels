@@ -130,7 +130,7 @@ def test_field_without_depth_identical_across_backends(backend: BackendT):
     ds["V"].data[:] = 0.5
 
     def run(backend: BackendT) -> tuple[np.ndarray, np.ndarray]:
-        fset = parcels.FieldSet.from_sgrid_conventions(ds if backend == "NumPy" else ds.chunk(), mesh="flat")
+        fset = parcels.FieldSet.from_sgrid_conventions(ds if backend == "NumPy" else ds.chunk())
         assert "mockZ" in fset.U.data.dims
         if backend == "WindowedArray":
             fset.to_windowed_arrays()

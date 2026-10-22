@@ -62,7 +62,7 @@ class FlatMesh(BaseMesh):
 TMesh = SphericalMesh | FlatMesh  # corresponds with `mesh`
 
 
-def get_mesh(mesh: TMesh):
+def get_mesh(mesh: TMesh):  # TODO remove
     if isinstance(mesh, SphericalMesh):
         return mesh
     if mesh == "flat":

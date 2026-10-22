@@ -14,6 +14,7 @@ import xarray as xr
 import parcels
 from parcels import FieldSet, Particle, Variable
 from parcels._core.index_search import _latlon_rad_to_xyz
+from parcels._core.mesh import SphericalMesh
 from parcels._core.xgrid import _FIELD_DATA_ORDERING, XGrid, get_axis_from_dim_name
 from parcels._datasets.structured.generated import simple_UV_dataset
 
@@ -80,7 +81,10 @@ def create_fieldset_zeros_conversion(mesh="spherical", xdim=200, ydim=100) -> Fi
     ds = simple_UV_dataset(n_times=2, nz=1, ny=ydim, nx=xdim, mesh=mesh)
     ds["lon"].data = np.linspace(-1e6 * mesh_conversion, 1e6 * mesh_conversion, xdim)
     ds["lat"].data = np.linspace(-1e6 * mesh_conversion, 1e6 * mesh_conversion, ydim)
-    return FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    if mesh is SphericalMesh:
+        ds["lon"].attrs["units"] = "degrees_east"
+        ds["lat"].attrs["units"] = "degrees_north"
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 def create_simple_pset(n=1):
@@ -229,10 +233,11 @@ def create_lonlat_grid(grid_type, face_deg, centre=(0.0, 0.0), n=8, mesh="spheri
     if grid_type == "uxgrid":
         grid = create_uxgrid_from_triangulation(nodes[:, 0], nodes[:, 1], faces, mesh=mesh)
     else:
+        unit = "degrees" if mesh == "spherical" else "m"
         ds = simple_UV_dataset(n_times=2, nz=2, ny=n + 1, nx=n + 1, mesh=mesh).assign_coords(
-            lon=(("YG", "XG"), grid_lon), lat=(("YG", "XG"), grid_lat)
+            lon=(("YG", "XG"), grid_lon, {"units": unit}), lat=(("YG", "XG"), grid_lat, {"units": unit})
         )
-        grid = FieldSet.from_sgrid_conventions(ds, mesh=mesh).U.grid
+        grid = FieldSet.from_sgrid_conventions(ds).U.grid
     return grid, nodes, faces
 
 

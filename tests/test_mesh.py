@@ -19,15 +19,14 @@ def test_spherical_mesh_deg2m():
 @pytest.mark.parametrize(
     "mesh, exp_radius, exp_deg2m",
     [
-        ("spherical", EARTH_RADIUS, EARTH_DEG2M),
         (SphericalMesh(), EARTH_RADIUS, EARTH_DEG2M),
         (SphericalMesh(radius=3389500.0), 3389500.0, 3389500.0 * np.pi / 180),
     ],
 )
 def test_xgrid_radius_and_deg2m(mesh, exp_radius, exp_deg2m):
     grid = FieldSet.from_sgrid_conventions(simple_UV_dataset(), mesh=mesh).U.grid
-    assert isinstance(grid._mesh, SphericalMesh)
-    assert grid._mesh.radius == exp_radius
+    assert isinstance(grid.mesh, SphericalMesh)
+    assert grid.mesh.radius == exp_radius
     assert grid.deg2m == pytest.approx(exp_deg2m)
 
 

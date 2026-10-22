@@ -63,7 +63,7 @@ class UxGrid(BaseGrid):
                 stacklevel=4,
             )
         self.z = z
-        self._mesh = get_mesh(mesh)
+        self.mesh = get_mesh(mesh)
         self._spatialhash = None
         if is_dask_collection(self.uxgrid.face_node_connectivity.data):
             self.uxgrid.face_node_connectivity.load()
@@ -100,8 +100,8 @@ class UxGrid(BaseGrid):
     @property
     def deg2m(self) -> float:
         """Metres per arcdegree for this grid's mesh."""
-        if self._mesh.is_spherical():
-            return self._mesh.deg2m
+        if self.mesh.is_spherical():
+            return self.mesh.deg2m
         return 1.0
 
     def search(self, z, y, x, ei=None, ti=None, tau=None, tol=1e-6):
