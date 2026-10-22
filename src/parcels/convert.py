@@ -476,10 +476,10 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
     ds = xr.merge(list(fields.values()) + [coords])
 
     # Ensure only 2D (surface) + time velocity fields are present
-    for name, da in ds.data_vars.items():
+    for var_name, da in ds.data_vars.items():
         if da.ndim > 3:
             raise ValueError(
-                f"Variable {name} has more than 2 spatial dimensions, which is not supported by the mom6_to_sgrid converter."
+                f"Variable {var_name} has more than 2 spatial dimensions, which is not supported by the mom6_to_sgrid converter."
             )
 
     ds = _drop_unused_dimensions_and_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
