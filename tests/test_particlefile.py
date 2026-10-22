@@ -21,6 +21,7 @@ from parcels import (
     StatusCode,
     Variable,
     convert,
+    particlefile_to_v3_zarr,
 )
 from parcels._core.particle import get_default_particle
 from parcels._core.particlefile import get_schema
@@ -156,44 +157,52 @@ def test_write_dtypes_pfile(fieldset, tmp_parquet):
         assert tab[f"v_{d.__name__}"].type == pa.from_numpy_dtype(d)
 
 
-@pytest.mark.skip(reason="Pending ParticleFile refactor; see issue #2386")
 @pytest.mark.parametrize("dt", [-np.timedelta64(1, "s"), np.timedelta64(1, "s")])
 @pytest.mark.parametrize("maxvar", [2, 4, 10])
-def test_pset_repeated_release_delayed_adding_deleting(fieldset, tmp_parquet, dt, maxvar):
+def test_pset_repeated_release_delayed_adding_deleting(fieldset, tmp_parquet, tmp_zarr, dt, maxvar):
     """Tests that if particles are released and deleted based on age that resulting output file is correct."""
     npart = 10
     fieldset.add_context("maxvar", maxvar)
 
-    MyParticle = Particle.add_variable(
-        [Variable("sample_var", initial=0.0), Variable("v_once", dtype=np.float64, initial=0.0)]
-    )
+    MyParticle = Particle.add_variable([Variable("sample_var", initial=0.0)])
 
     pset = ParticleSet(
         fieldset,
+        pclass=MyParticle,
         x=np.zeros(npart),
         y=np.zeros(npart),
-        pclass=MyParticle,
         t=fieldset.time_interval.left + [np.timedelta64(i + 1, "s") for i in range(npart)],
     )
     pfile = ParticleFile(tmp_parquet, outputdt=abs(dt))
 
     def IncrLon(particles, fieldset):  # pragma: no cover
+        ptcls_to_write = particles[(particles.sample_var == 0) & (particles.t != 0)]
+        if len(ptcls_to_write.t) > 0:
+            pfile.write(ptcls_to_write, ptcls_to_write.t)
         particles.sample_var += 1.0
-        particles.state = np.where(
-            particles.sample_var > fieldset.maxvar,
-            StatusCode.Delete,
-            particles.state,
-        )
+        particles.state[particles.sample_var > fieldset.maxvar] = StatusCode.Delete
 
-    for _ in range(npart):
-        pset.execute(IncrLon, dt=dt, runtime=np.timedelta64(1, "s"), output_file=pfile)
+    pset.execute(IncrLon, dt=dt, runtime=np.timedelta64(npart, "s"), output_file=pfile)
 
-    ds = xr.open_zarr(tmp_parquet)
+    df = parcels.read_particlefile(tmp_parquet)
+    for traj in df.partition_by("particle_id", maintain_order=True):
+        print(traj["sample_var"][:])
+
+    samplevar = df["sample_var"][:]
+    np.testing.assert_array_equal(samplevar.shape, (npart, min(maxvar, npart) + 1))
+
+    particlefile_to_v3_zarr(tmp_parquet, tmp_zarr)
+    ds = xr.open_zarr(tmp_zarr)
+
     samplevar = ds["sample_var"][:]
-    assert samplevar.shape == (npart, min(maxvar, npart + 1))
+    print(samplevar.values)
+    print(ds["time"].values)
+    print("")
+    np.testing.assert_array_equal(samplevar.shape, (npart, min(maxvar, npart) + 1))
     # test whether samplevar[:, k] = k
     for k in range(samplevar.shape[1]):
-        assert np.allclose([p for p in samplevar[:, k] if np.isfinite(p)], k + 1)
+        print([p.values for p in samplevar[1:, k] if np.isfinite(p)])
+        assert np.allclose([p for p in samplevar[1:, k] if np.isfinite(p)], k + 1)
 
 
 def test_file_warnings(fieldset, tmp_parquet):

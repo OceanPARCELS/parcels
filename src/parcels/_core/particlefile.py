@@ -166,7 +166,6 @@ class ParticleFile:
             )
 
         if isinstance(t, (np.timedelta64, np.datetime64)):
-            print(t)
             if self._time_interval is None:
                 raise ValueError(
                     "The time interval is unknown, so datetime/timedelta times cannot be converted. "
@@ -174,10 +173,13 @@ class ParticleFile:
                 )
             t = timedelta_to_float(t - self._time_interval.left)
         vars_to_write = _get_vars_to_write(pclass)
-        if indices is None:
-            indices_to_write = _to_write_particles(particle_data, t)
-        else:
+        if indices is not None:
             indices_to_write = indices
+        elif isinstance(pset, ParticleSetView):
+            # A view already selects the particles to write, so `t` is not used to filter
+            indices_to_write = np.flatnonzero(pset._index)
+        else:
+            indices_to_write = _to_write_particles(particle_data, t)
 
         self._writer.write_table(
             pa.table({v.name: pa.array(particle_data[v.name][indices_to_write]) for v in vars_to_write}),
