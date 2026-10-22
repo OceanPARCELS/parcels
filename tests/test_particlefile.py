@@ -463,12 +463,6 @@ def test_particlefile_init_invalid(tmp_path):
         ParticleFile(path, outputdt=np.timedelta64(1, "s"))
 
 
-def test_pfile_write_custom_particle():
-    # Test the writing of a custom particle with variables that are to_write, some to_write once, and some not to_write
-    # ? This is more of an integration test... Should it be housed here?
-    ...
-
-
 def test_particlefile_readable_after_kernel_error(fieldset, tmp_parquet):
     """Parquet output file must be readable even if the kernel raises an error mid-execution (GH-2713)."""
 
