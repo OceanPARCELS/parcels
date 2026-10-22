@@ -25,7 +25,7 @@ def test_fieldKh_Brownian(mesh):
     ds = simple_UV_dataset(n_times=2, nz=1, ny=2, nx=2, mesh=mesh)
     ds["lon"].data = np.array([-1e6, 1e6])
     ds["lat"].data = np.array([-1e6, 1e6])
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     fieldset.add_constant_field("Kh_zonal", kh_zonal)
     fieldset.add_constant_field("Kh_meridional", kh_meridional)
 
@@ -63,7 +63,7 @@ def test_fieldKh_SpatiallyVaryingDiffusion(mesh, kernel):
 
     ds["Kh_zonal"] = (["time", "depth", "YG", "XG"], np.full((2, 1, ydim, xdim), Kh))
     ds["Kh_meridional"] = (["time", "depth", "YG", "XG"], np.full((2, 1, ydim, xdim), Kh))
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     fieldset.add_context("dres", float(ds["lon"][1] - ds["lon"][0]))
 
     npart = 10000

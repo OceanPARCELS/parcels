@@ -20,14 +20,14 @@ def _cell_centers(grid):
 
 def test_spatialhash_init():
     ds = datasets["2d_left_rotated"]
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     spatialhash = grid.get_spatial_hash()
     assert spatialhash is not None
 
 
 def test_spatialhash_describe():
     ds = datasets["2d_left_rotated"]
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     spatialhash = grid.get_spatial_hash()
 
     io = StringIO()
@@ -52,7 +52,7 @@ Faces per occupied hash cell (min / mean / max) : 1 / 1.36 / 4
 
 def test_invalid_positions():
     ds = datasets["2d_left_rotated"]
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
 
     j, i, _ = grid.get_spatial_hash().query([np.nan, np.inf], [np.nan, np.inf])
     assert np.all(j == -3)
@@ -65,7 +65,7 @@ def test_spherical_regional_bounds():
     wasted on parts of the sphere the grid does not cover.
     """
     ds = datasets["2d_left_rotated"]
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="spherical").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     spatialhash = grid.get_spatial_hash()
 
     extents = np.array(
@@ -96,7 +96,7 @@ def test_hash_entry_budget():
     hash cells), the resolution is reduced to fit; queries still resolve exactly.
     """
     ds = datasets["2d_left_rotated"]
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="spherical").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     spatialhash = grid.get_spatial_hash()
 
     budget = max(_HASH_ENTRIES_PER_FACE * np.size(spatialhash._xlow), _HASH_ENTRY_BUDGET_MIN)
@@ -113,7 +113,7 @@ def test_hash_entry_budget():
 
 def test_mixed_positions():
     ds = datasets["2d_left_rotated"]
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     lat = grid.lat.mean()
     lon = grid.lon.mean()
     y = [lat, np.nan]
@@ -128,7 +128,7 @@ def test_mixed_positions():
 def test_nan_node_invalidates_touching_faces():
     """Any mesh face that touches a NaN node should not be added to the HashTable."""
     ds = datasets["2d_left_rotated"]
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     clat, clon, jj, ii = _cell_centers(grid)
 
     # `grid._ds` shares its lon/lat arrays with the module-level `datasets` fixture

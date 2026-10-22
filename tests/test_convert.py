@@ -213,7 +213,7 @@ def test_mom6_to_sgrid_cefi_example():
     # CEFI NEP output is symmetric: one more corner point than cell centres along each axis
     assert ds["grid"].attrs["face_dimensions"] == "xh:xq (padding:none) yh:yq (padding:none)"
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     lon = float(ds["lon"].mean())
     lat = float(ds["lat"].mean())
     pset = parcels.ParticleSet(fieldset, x=[lon], y=[lat])
@@ -263,7 +263,7 @@ def test_mom6_to_sgrid(symmetric, padding):
         meta.get_value_by_id("node_dimension2"),  # Y edge
     }.issubset(set(ds["V"].dims))
 
-    FieldSet.from_sgrid_conventions(ds, mesh="spherical")
+    FieldSet.from_sgrid_conventions(ds)
 
 
 def test_mom6_to_sgrid_inconsistent_sizes():

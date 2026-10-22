@@ -317,12 +317,13 @@ def assert_vector_field_components_in_dataset(ds: xr.Dataset, vector_fields: pty
 def create_empty_constant_field_model(mesh: SphericalMesh | FlatMesh) -> StructuredModelData:
     """Create a empty model for constant fields with the given mesh type."""
     mesh_: ptyping.TMesh = "flat" if isinstance(mesh, FlatMesh) else mesh
+    unit = "m" if isinstance(mesh, FlatMesh) else "degrees"
     return StructuredModelData.from_sgrid_conventions(
         xr.Dataset(
             {},
             coords={
-                "lat": (["lat"], [0], {"axis": "Y"}),
-                "lon": (["lon"], [0], {"axis": "X"}),
+                "lat": (["lat"], [0], {"axis": "Y", "units": unit}),
+                "lon": (["lon"], [0], {"axis": "X", "units": unit}),
                 "depth": (["depth"], [0], {"axis": "Z"}),
                 "time": (["time"], [0], {"axis": "T"}),
             },

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Literal
 
 import numpy as np
 
@@ -60,7 +59,7 @@ class FlatMesh(BaseMesh):
         return False
 
 
-TMesh = SphericalMesh | Literal["spherical", "flat"]  # corresponds with `mesh`
+TMesh = SphericalMesh | FlatMesh  # corresponds with `mesh`
 
 
 def get_mesh(mesh: TMesh):

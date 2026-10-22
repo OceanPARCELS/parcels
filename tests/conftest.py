@@ -41,4 +41,4 @@ def fieldset() -> FieldSet:
             "V_A_grid": "V",
         }
     )
-    return FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    return FieldSet.from_sgrid_conventions(ds)

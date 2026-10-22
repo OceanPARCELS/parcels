@@ -305,7 +305,7 @@ class FieldSet:
         mesh: ptyping.TMesh | None = None,
         vector_fields: ptyping.VectorFields | NotSetType = NOTSET,
         skip_field_data_validation: bool = False,
-    ):  # TODO: Update mesh to be discovered from the dataset metadata
+    ):
         """Create a FieldSet from a dataset using SGRID convention metadata.
 
         This is the primary ingestion method in Parcels for structured grid datasets.
@@ -316,9 +316,10 @@ class FieldSet:
         ----------
         ds : xarray.Dataset
             xarray.Dataset with SGRID convention metadata.
-        mesh : str
-            String indicating the type of mesh coordinates used during
-            velocity interpolation. Options are "spherical" or "flat".
+        mesh : MeshType
+            MeshType indicating the type of mesh coordinates used during
+            velocity interpolation. Default is None, in which case the mesh type will be inferred
+            from the units of the dataset coordinates.
         vector_fields : Mapping[str, tuple[str, ...]], optional
             Mapping of vector field names to tuples of component variable names in the dataset.
             For example, ``{"UV": ("U", "V"), "UVW": ("U", "V", "W")}``.

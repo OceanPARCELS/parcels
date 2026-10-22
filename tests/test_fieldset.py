@@ -113,7 +113,7 @@ def test_fieldset_no_UV(tmp_parquet):
 
 @pytest.mark.parametrize("ds", [pytest.param(ds, id=k) for k, ds in datasets_structured.items()])
 def test_fieldset_from_structured_generic_datasets(ds):
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     assert len(fieldset.fields) == len(ds.data_vars) - 1  # `-1` for the SGRID metadata
     for field in fieldset.fields.values():
@@ -151,13 +151,13 @@ def test_fieldset_invalid_vector_fields(vector_fields, ctx):
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
 
     with ctx:
-        FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields=vector_fields)
+        FieldSet.from_sgrid_conventions(ds, vector_fields=vector_fields)
 
 
 def test_fieldset_structured_vectorfield_default():
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fset = FieldSet.from_sgrid_conventions(ds)
 
     assert "U" in fset.fields
     assert "V" in fset.fields
@@ -168,7 +168,7 @@ def test_fieldset_structured_vectorfield_custom():
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
     ds = ds.rename({"U": "U_wind", "V": "V_wind"})
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset = FieldSet.from_sgrid_conventions(ds, vector_fields={"UV_wind": ("U_wind", "V_wind")})
 
     assert "U_wind" in fset.fields
     assert "V_wind" in fset.fields
@@ -178,7 +178,7 @@ def test_fieldset_structured_vectorfield_custom():
 def test_fieldset_structured_vectorfield_empty():
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields={})
+    fset = FieldSet.from_sgrid_conventions(ds, vector_fields={})
 
     assert "U" in fset.fields
     assert "V" in fset.fields
@@ -340,7 +340,7 @@ def test_fieldset_from_fesom2_missingUV():
 @pytest.mark.parametrize("ds_name", list(datasets_sgrid.keys()))
 def test_fieldset_from_sgrid_conventions(ds_name):
     ds = datasets_sgrid[ds_name]
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     assert isinstance(fieldset, FieldSet)
     assert len(fieldset.fields) > 0
 
@@ -352,16 +352,16 @@ def test_fieldset_from_sgrid_conventions_inconsistent_padding(face_dim):
     ds = ds.isel({face_dim: slice(1, None)})  # plain xarray isel, so face dim is one shorter than the node dim
 
     with pytest.raises(SGridDatasetInconsistency, match=f"face dimension {face_dim!r}"):
-        FieldSet.from_sgrid_conventions(ds, mesh="flat")
+        FieldSet.from_sgrid_conventions(ds)
 
 
 def test_fieldset_skip_field_data_validation():
     ds = datasets_structured["ds_2d_left"]
     ds["U_A_grid"][:] = np.nan
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     assert np.isfinite(fieldset.U_A_grid.data).all()
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat", skip_field_data_validation=True)
+    fieldset = FieldSet.from_sgrid_conventions(ds, skip_field_data_validation=True)
     assert np.isnan(fieldset.U_A_grid.data).all()
 
 
@@ -422,7 +422,7 @@ def test_vectorfields_without_time():
     ds2 = ds1.isel(time=0).drop_vars("time").rename({"U": "U_const", "V": "V_const"})
     ds = xr.merge([ds1, ds2])
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields={"UV_const": ("U_const", "V_const")})
+    fset = FieldSet.from_sgrid_conventions(ds, vector_fields={"UV_const": ("U_const", "V_const")})
     fset.UV_const.eval(t=0, z=0, y=0, x=0)
     fset.U_const.eval(t=0, z=0, y=0, x=0)
 
@@ -548,7 +548,7 @@ def test_fieldset_from_simple_UV_sigma_dataset(n_snapshots):
     nz, ny, nx = 4, 6, 5
     eta = np.broadcast_to(np.linspace(-1.0, 1.0, n_snapshots)[:, np.newaxis, np.newaxis], (n_snapshots, ny, nx))
     ds = simple_UV_sigma_dataset(n_snapshots, nz, ny, nx, np.full((ny, nx), 50.0), eta)
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     depth = fieldset.U.grid._ds["depth"]
     assert depth.dims == ("time", "depth", "YC", "XC")

@@ -103,8 +103,8 @@ def radial_rotation_dataset(xdim=200, ydim=200):  # Define 2D flat, square field
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -147,8 +147,8 @@ def moving_eddy_dataset(xdim=2, ydim=2):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
         attrs={
             "u_0": u_0,
@@ -208,8 +208,8 @@ def decaying_moving_eddy_dataset(xdim=2, ydim=2):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
         attrs={
             "u_0": u_0,
@@ -299,6 +299,7 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
     # Convert from m to lat/lon for spherical meshes
     lon = La / 1852.0 / 60.0 if mesh == "spherical" else La
     lat = Wa / 1852.0 / 60.0 if mesh == "spherical" else Wa
+    unit = "m" if mesh == "flat" else "degree"
 
     return xr.Dataset(
         {
@@ -311,8 +312,8 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": unit}),
+            "lon": (["XG"], lon, {"axis": "X", "units": unit}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -379,8 +380,8 @@ def stommel_gyre_dataset(xdim=200, ydim=200, grid_type="A"):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,

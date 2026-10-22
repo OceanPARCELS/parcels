@@ -133,7 +133,7 @@ def test_execution_order(kernel_type):
     ds = simple_UV_dataset(n_times=1, nz=1, ny=2, nx=2, mesh="flat")
     ds["U"].data[:, :] = [[0, 1], [2, 3]]
     ds["lon"].data = [0, 2]
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     def MoveLon_Update_X(particles, fieldset):  # pragma: no cover
         particles.x += 0.2

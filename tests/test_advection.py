@@ -224,7 +224,7 @@ def test_length1dimensions(u_value, x_slice, v_value, y_slice, w_value, z_slice)
         indexers.update({"vertical_dimensions_dim1": z_slice})
     ds = ds.sgrid.isel(indexers)
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     x0, y0, z0 = 3, 3, 20
     pset = ParticleSet(fieldset, x=x0, y=y0, z=z0)
@@ -243,7 +243,7 @@ def test_length1dimensions(u_value, x_slice, v_value, y_slice, w_value, z_slice)
 def test_advection_with_integrators_singlefield(npart, integrator):
     """Test that the RK2 and RK4 integrators don't work with a single field (e.g. U)"""
     ds = simple_UV_dataset(mesh="flat").rename({"U": "T"})
-    fset = parcels.FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fset = parcels.FieldSet.from_sgrid_conventions(ds)
 
     pset = parcels.ParticleSet(fset, x=np.zeros(npart), y=np.arange(npart))
 
@@ -259,7 +259,7 @@ def test_advection_with_integrators_singlefield(npart, integrator):
 
 def test_radialrotation(npart=10):
     ds = radial_rotation_dataset()
-    fieldset = parcels.FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds)
 
     dt = np.timedelta64(30, "s")
     lon = np.linspace(32, 50, npart)
@@ -302,7 +302,7 @@ def test_moving_eddy(kernel, rtol):
         ds["Kh_zonal"] = (["time", "depth", "YG", "XG"], np.full(ds["U"].shape, 0))
         ds["Kh_meridional"] = ds["Kh_zonal"]
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     if kernel in [AdvectionDiffusionEM, AdvectionDiffusionM1]:
         fieldset.add_context("dres", 0.1)
@@ -345,7 +345,7 @@ def test_moving_eddy(kernel, rtol):
 )
 def test_decaying_moving_eddy(kernel, rtol):
     ds = decaying_moving_eddy_dataset()
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     start_lon, start_lat = 10000, 10000
     dt = np.timedelta64(60, "m")
@@ -389,7 +389,7 @@ def test_decaying_moving_eddy(kernel, rtol):
 @pytest.mark.parametrize("grid_type", ["A", "C"])
 def test_stommelgyre_fieldset(kernel, rtol, grid_type):
     npart = 2
-    fieldset = FieldSet.from_sgrid_conventions(stommel_gyre_dataset(grid_type=grid_type), mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(stommel_gyre_dataset(grid_type=grid_type))
 
     dt = np.timedelta64(30, "m")
     runtime = np.timedelta64(1, "D")
@@ -427,7 +427,7 @@ def test_stommelgyre_fieldset(kernel, rtol, grid_type):
 def test_peninsula_fieldset(kernel, rtol, grid_type, mesh):
     npart = 2
     ds = peninsula_dataset(grid_type=grid_type)
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     dt = np.timedelta64(30, "m")
     runtime = np.timedelta64(23, "h")
@@ -546,7 +546,7 @@ def test_advection_on_moving_sigma_grid_keeps_depth():
     ds = simple_UV_sigma_dataset(n_snapshots, nz, ny, nx, bottom_depth, eta)
     u0 = 0.5
     ds["U"].values[:] = u0
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     x0, z0 = 0.0, np.array([2.0, 8.0, 15.0])
     pset = ParticleSet(fieldset, x=np.full(z0.size, x0), y=np.zeros(z0.size), z=z0)

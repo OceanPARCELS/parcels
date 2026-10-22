@@ -64,7 +64,7 @@ def test_xgrid_repr(fieldset):
 
 @pytest.mark.parametrize("ds, attr, expected", test_cases)
 def test_xgrid_properties_ground_truth(ds, attr, expected):
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     actual = getattr(grid, attr)
     assert_equal(actual, expected)
 
@@ -189,7 +189,7 @@ def test_vertical1D_field(ds):
     ds["z1d"] = xr.DataArray(np.linspace(0, 10, ds["depth"].size), dims=("ZG",))
     ds = ds.reset_coords("z1d")
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     field = fieldset.z1d
 
     np.testing.assert_almost_equal(field.eval(np.timedelta64(0, "s"), 0.45, 0, 0), np.array([4.5]))
@@ -200,7 +200,7 @@ def test_time1D_field():
     ds["data_g"] = (["time"], np.arange(0, ds["time"].size))
     ds["time"] = xr.date_range("2000-01-01", "2000-01-13")
 
-    field = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g
+    field = FieldSet.from_sgrid_conventions(ds).data_g
     time = timedelta_to_float(np.datetime64("2000-01-10T12:00:00") - field.time_interval.left)
     assert field.eval(time, -20, 5, 6) == 9.5
 
@@ -213,7 +213,7 @@ def test_time1D_field():
     ],
 )  # for key, ds in datasets.items()])
 def test_xgrid_search_cpoints(ds):
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     grid = fieldset.U_A_grid.grid
     lat_array, lon_array = get_2d_fpoint_mesh(grid)
     lat_array, lon_array = corner_to_cell_center_points(lat_array, lon_array)

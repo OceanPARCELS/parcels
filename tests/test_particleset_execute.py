@@ -38,14 +38,14 @@ def fieldset_no_time_interval() -> FieldSet:
             "V_A_grid": "V",
         }
     )
-    return FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 @pytest.fixture
 def zonal_flow_fieldset() -> FieldSet:
     ds = simple_UV_dataset(mesh="flat")
     ds["U"].data[:] = 1.0
-    return FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def time_varying_zonal_flow_fieldset() -> FieldSet:
     ds["time"] = ("time", times, {"axis": "T"})
     u = np.cos(2 * np.pi * (times / np.timedelta64(1, "s")) / 86400.0)  # 1 m/s, 1-day period
     ds["U"].data[:] = u[:, None, None, None]
-    return FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 def test_execute_trajectory_independent_of_other_particles_release_times(time_varying_zonal_flow_fieldset):
