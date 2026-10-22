@@ -71,11 +71,11 @@ def run_global_copernicusmarine():
         """Advection of particles using second-order Runge-Kutta integration,
         keeping particles within the periodic domain [-180, 180].
         """
-        (u1, v1) = fieldset.UV[particles]
+        u1, v1 = fieldset.UV[particles]
         x1 = particles.x + u1 * 0.5 * particles.dt
         x1 = ((x1 + 180) % 360) - 180
         y1 = particles.y + v1 * 0.5 * particles.dt
-        (u2, v2) = fieldset.UV[
+        u2, v2 = fieldset.UV[
             particles.t + 0.5 * particles.dt, particles.z, y1, x1, particles
         ]
         particles.dx += u2 * particles.dt

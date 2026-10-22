@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import uxarray as ux
 import xarray as xr
@@ -201,3 +202,80 @@ def test_convert_fesom_to_ugrid():
     uxds = ux.UxDataset(data_files, uxgrid=grid)
     uxds = convert.fesom_to_ugrid(uxds)
     FieldSet.from_ugrid_conventions(uxds)
+
+
+def test_mom6_to_sgrid_cefi_example():
+    U = parcels.tutorial.open_dataset("MOM6_example_data/U")["ssu"]
+    V = parcels.tutorial.open_dataset("MOM6_example_data/V")["ssv"]
+    coords = parcels.tutorial.open_dataset("MOM6_example_data/static")
+    ds = convert.mom6_to_sgrid(fields={"U": U, "V": V}, coords=coords)
+
+    # CEFI NEP output is symmetric: one more corner point than cell centres along each axis
+    assert ds["grid"].attrs["face_dimensions"] == "xh:xq (padding:none) yh:yq (padding:none)"
+
+    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="spherical")
+    lon = float(ds["lon"].mean())
+    lat = float(ds["lat"].mean())
+    pset = parcels.ParticleSet(fieldset, x=[lon], y=[lat])
+    pset.execute(parcels.kernels.AdvectionRK4, runtime=np.timedelta64(1, "D"), dt=np.timedelta64(10, "m"))
+    assert np.isfinite(pset.x).all() and np.isfinite(pset.y).all()
+
+
+def _mom6_synthetic(nx=4, ny=3, symmetric=True):
+    """Small MOM6-like C-grid: U on (yh, xq), V on (yq, xh), corners on (yq, xq)."""
+    nxq = nx + 1 if symmetric else nx
+    nyq = ny + 1 if symmetric else ny
+    lon_c, lat_c = np.meshgrid(np.linspace(-130.0, -125.0, nxq), np.linspace(40.0, 45.0, nyq))
+    time = np.array(["2022-01-01", "2022-01-02"], dtype="datetime64[ns]")
+    coords = xr.Dataset(
+        {
+            "geolon_c": (("yq", "xq"), lon_c),
+            "geolat_c": (("yq", "xq"), lat_c),
+            "areacello": (("yh", "xh"), np.ones((ny, nx))),  # unused static variable, should be dropped
+        }
+    )
+    U = xr.DataArray(np.full((2, ny, nxq), 0.1), dims=("time", "yh", "xq"), coords={"time": time}, name="ssu")
+    V = xr.DataArray(np.full((2, nyq, nx), 0.1), dims=("time", "yq", "xh"), coords={"time": time}, name="ssv")
+    return U, V, coords
+
+
+@pytest.mark.parametrize("symmetric, padding", [(True, "none"), (False, "low")])
+def test_mom6_to_sgrid(symmetric, padding):
+    U, V, coords = _mom6_synthetic(symmetric=symmetric)
+    ds = convert.mom6_to_sgrid(fields={"U": U, "V": V}, coords=coords)
+
+    assert ds["grid"].attrs == {
+        "cf_role": "grid_topology",
+        "topology_dimension": 2,
+        "node_dimensions": "xq yq",
+        "face_dimensions": f"xh:xq (padding:{padding}) yh:yq (padding:{padding})",
+        "node_coordinates": "lon lat",
+    }
+    assert "areacello" not in ds
+
+    meta = ds.sgrid.metadata
+    assert {
+        meta.get_value_by_id("node_dimension1"),  # X edge
+        meta.get_value_by_id("face_dimension2"),  # Y center
+    }.issubset(set(ds["U"].dims))
+    assert {
+        meta.get_value_by_id("face_dimension1"),  # X center
+        meta.get_value_by_id("node_dimension2"),  # Y edge
+    }.issubset(set(ds["V"].dims))
+
+    FieldSet.from_sgrid_conventions(ds, mesh="spherical")
+
+
+def test_mom6_to_sgrid_inconsistent_sizes():
+    U, V, coords = _mom6_synthetic(symmetric=True)
+    V = V.isel(xh=slice(0, -2))  # two fewer centres than corners along X
+    with pytest.raises(ValueError, match="Unexpected MOM6 grid sizes"):
+        convert.mom6_to_sgrid(fields={"U": U, "V": V}, coords=coords)
+
+
+def test_mom6_to_sgrid_withdepth():
+    U, V, coords = _mom6_synthetic(symmetric=True)
+    U = U.expand_dims(depth=[0], axis=1)
+    V = V.expand_dims(depth=[0], axis=1)
+    with pytest.raises(ValueError, match="has more than 2 spatial dimensions"):
+        convert.mom6_to_sgrid(fields={"U": U, "V": V}, coords=coords)

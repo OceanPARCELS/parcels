@@ -72,6 +72,29 @@ _NEMO_VARNAMES_MAPPING: dict[str, str] = {
     "wo": "W",
 }
 
+_MOM6_EXPECTED_COORDS: list[tuple[str, _Status]] = [
+    ("geolon_c", _Status.REQUIRED),
+    ("geolat_c", _Status.REQUIRED),
+]
+
+_MOM6_DIMENSION_COORD_NAMES: list[str] = [
+    "xq",
+    "yq",
+    "time",
+    "xh",
+    "yh",
+    "geolon_c",
+    "geolat_c",
+]
+
+_MOM6_AXIS_VARNAMES: dict[str, XgcmAxisDirection] = {
+    "xq": "X",
+    "xh": "X",
+    "yq": "Y",
+    "yh": "Y",
+    "time": "T",
+}
+
 _MITGCM_EXPECTED_COORDS: list[tuple[str, _Status]] = [(name, _Status.REQUIRED) for name in ["XG", "YG", "Zl"]]
 
 _MITGCM_AXIS_VARNAMES: dict[str, XgcmAxisDirection] = {
@@ -405,6 +428,97 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
 
     # Update to use lon and lat for internal naming
     ds = ds.sgrid.rename({"gphif": "lat", "glamf": "lon"})  # TODO: Logging message about rename
+    return ds
+
+
+def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Dataset) -> xr.Dataset:
+    """Create an sgrid-compliant xarray.Dataset from a dataset of MOM6 netcdf files.
+
+    Parameters
+    ----------
+    fields : dict[str, xr.Dataset | xr.DataArray]
+        Velocity fields keyed by Parcels name, e.g. ``{"U": ds["ssu"], "V": ds["ssv"]}``.
+        U must be on ``(yh, xq)`` and V on ``(yq, xh)``. The time coordinate must be in ascending order.
+    coords : xarray.Dataset
+        MOM6 static grid dataset (e.g. ``ocean_static.nc``) containing ``geolon_c`` and ``geolat_c``
+        on ``(yq, xq)``.
+
+    Returns
+    -------
+    xarray.Dataset
+        Dataset object following SGRID conventions to be (optionally) modified and passed to a FieldSet constructor.
+
+    Notes
+    -----
+    MOM6 (https://github.com/mom-ocean/MOM6) uses a curvilinear Arakawa C-grid. The grid geometry is defined
+    by the corner points ``geolon_c`` and ``geolat_c``.
+
+    MOM6 output can be written in symmetric or non-symmetric layout. In symmetric output (required for
+    regional configurations), each axis has one more corner point than cell centres
+    (``len(xq) == len(xh) + 1``); in non-symmetric output they have the same length. The layout is
+    detected from the grid sizes. When subsetting symmetric output, keep one more corner point than
+    centre points along each axis.
+
+    Currently only 2D (surface) velocity fields are supported.
+    """
+    fields = fields.copy()
+    coords = _pick_expected_coords(coords, _MOM6_EXPECTED_COORDS)
+
+    for name, field_da in fields.items():
+        if isinstance(field_da, xr.Dataset):
+            field_da = field_da[name]
+        else:
+            field_da = field_da.rename(name)
+
+        field_da = field_da.reset_coords(drop=True)
+        fields[name] = field_da
+
+    ds = xr.merge(list(fields.values()) + [coords])
+
+    # Ensure only 2D (surface) + time velocity fields are present
+    for var_name, da in ds.data_vars.items():
+        if da.ndim > 3:
+            raise ValueError(
+                f"Variable {var_name} has more than 2 spatial dimensions, which is not supported by the mom6_to_sgrid converter."
+            )
+
+    ds = _drop_unused_dimensions_and_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
+    ds = _assign_dims_as_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
+    ds = _set_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
+    ds = _set_axis_attrs(ds, _MOM6_AXIS_VARNAMES)
+
+    for node, face in [("xq", "xh"), ("yq", "yh")]:
+        if ds.sizes[node] - ds.sizes[face] not in (0, 1):
+            raise ValueError(
+                f"Unexpected MOM6 grid sizes: {node}={ds.sizes[node]}, {face}={ds.sizes[face]}. "
+                "Expected symmetric (node = face + 1) or non-symmetric (node = face) layout."
+            )
+
+    # Symmetric layout (one more corner than centre) -> padding "none"; non-symmetric (equal sizes) -> "low"
+    pad_x = sgrid.Padding.NONE if ds.sizes["xq"] == ds.sizes["xh"] + 1 else sgrid.Padding.LOW
+    pad_y = sgrid.Padding.NONE if ds.sizes["yq"] == ds.sizes["yh"] + 1 else sgrid.Padding.LOW
+
+    _assert_no_grid_metadata(ds)
+    ds["grid"] = xr.DataArray(
+        0,
+        attrs=sgrid.SGrid2DMetadata(
+            cf_role="grid_topology",
+            topology_dimension=2,
+            node_dimensions=("xq", "yq"),
+            node_coordinates=("geolon_c", "geolat_c"),
+            face_dimensions=(
+                sgrid.FaceNodePadding("xh", "xq", pad_x),
+                sgrid.FaceNodePadding("yh", "yq", pad_y),
+            ),
+        ).to_attrs(),
+    )
+
+    # MOM6 geographic coordinates are always in degrees
+    ds["geolon_c"].attrs["units"] = "degrees"
+    ds["geolat_c"].attrs["units"] = "degrees"
+
+    # Use lon and lat for internal naming
+    ds = ds.sgrid.rename({"geolat_c": "lat", "geolon_c": "lon"})
     return ds
 
 

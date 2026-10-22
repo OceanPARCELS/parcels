@@ -4,7 +4,7 @@ exclude-newer = "5d" # security pre-caution against compromised packages
 preview = ["pixi-build"]
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
-requires-pixi = ">=0.72.0"
+requires-pixi = ">=0.82.1"
 
 [exclude-newer]
 pixi-build-python = "0d"
