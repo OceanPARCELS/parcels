@@ -161,11 +161,11 @@ Output: b9 0 0 b8 0 0 b7 0 0 ... b1 0 0 b0
 Rather than looping over bits, this is done with a sequence of shift-and-mask operations on `uint32` values
 
 ```python
-n &= 0x000003FF          # keep only 10 bits
+n &= 0x000003FF  # keep only 10 bits
 n = (n | (n << 16)) & 0xFF0000FF
-n = (n | (n <<  8)) & 0x0300F00F
-n = (n | (n <<  4)) & 0x030C30C3
-n = (n | (n <<  2)) & 0x09249249
+n = (n | (n << 8)) & 0x0300F00F
+n = (n | (n << 4)) & 0x030C30C3
+n = (n | (n << 2)) & 0x09249249
 ```
 
 Each stage copies the bits to the left by a decreasing amount and masks away the copies that are not wanted, moving groups of bits further apart. After the final stage, the 10 bits of the input sit at bit positions 0, 3, 6, ..., 27 of the result. These operations are vectorized over NumPy arrays, so all quantized coordinates are dilated at once.
