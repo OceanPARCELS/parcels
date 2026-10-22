@@ -95,6 +95,7 @@ def test_pfile_array_remove_particles(fieldset, tmp_parquet):
         t=fieldset.time_interval.left,
     )
     pfile = ParticleFile(tmp_parquet, outputdt=np.timedelta64(1, "s"))
+    pfile.set_time_interval(fieldset.time_interval)
     pset._data["t"][:] = 0
     pfile.write(pset, t=fieldset.time_interval.left)
     pset.remove_indices(3)
@@ -117,6 +118,7 @@ def test_pfile_array_remove_all_particles(fieldset, tmp_parquet):
     pfile.write(pset, t=0)
     for _ in range(npart):
         pset.remove_indices(-1)
+    pfile.set_time_interval(fieldset.time_interval)
     pfile.write(pset, fieldset.time_interval.left + np.timedelta64(1, "D"))
     pfile.write(pset, fieldset.time_interval.left + np.timedelta64(2, "D"))
     pfile.close()
@@ -145,6 +147,7 @@ def test_write_dtypes_pfile(fieldset, tmp_parquet):
 
     pset = ParticleSet(fieldset, pclass=MyParticle, x=0, y=0, t=fieldset.time_interval.left)
     pfile = ParticleFile(tmp_parquet, outputdt=np.timedelta64(1, "s"))
+    pfile.set_time_interval(fieldset.time_interval)
     pfile.write(pset, t=fieldset.time_interval.left)
     pfile.close()
 

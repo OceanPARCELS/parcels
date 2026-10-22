@@ -524,6 +524,10 @@ nb_execution_mode = "cache"
 nb_execution_excludepatterns = ["jupyter_execute", ".jupyter_cache"]
 nb_execution_raise_on_error = True
 nb_execution_timeout = 75
+nb_merge_streams = (
+    True  # merge consecutive stdout/stderr outputs of a cell into a single block
+)
+
 suppress_warnings = ["mystnb.unknown_mime_type"]
 nitpicky = True
 nitpick_ignore_regex = [
