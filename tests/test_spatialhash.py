@@ -65,6 +65,9 @@ def test_spherical_regional_bounds():
     wasted on parts of the sphere the grid does not cover.
     """
     ds = datasets["2d_left_rotated"]
+    # override coordinate units to degrees to indicate a spherical mesh
+    ds["lon"].attrs["units"] = "degrees"
+    ds["lat"].attrs["units"] = "degrees"
     grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     spatialhash = grid.get_spatial_hash()
 
@@ -96,6 +99,9 @@ def test_hash_entry_budget():
     hash cells), the resolution is reduced to fit; queries still resolve exactly.
     """
     ds = datasets["2d_left_rotated"]
+    # override coordinate units to degrees to indicate a spherical mesh
+    ds["lon"].attrs["units"] = "degrees"
+    ds["lat"].attrs["units"] = "degrees"
     grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     spatialhash = grid.get_spatial_hash()
 
