@@ -7,17 +7,20 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from hypothesis import given, settings
 from re_assert import Matches
 
 import parcels.tutorial
 import tests
-from parcels import ParticleFile, ParticleSet, convert
+from parcels import Particle, ParticleFile, ParticleSet, Variable, convert
 from parcels._core.fieldset import FieldSet, IncompatibleMeshesException, _datetime_to_msg
 from parcels._core.mesh import SphericalMesh
 from parcels._core.model import _default_vector_field_components
+from parcels._core.utils.time import TimeInterval
 from parcels._datasets.structured.generated import simple_UV_sigma_dataset
 from parcels._datasets.structured.generic import datasets as datasets_structured
 from parcels._datasets.structured.generic import datasets_sgrid
+from parcels._datasets.structured.strategies import reduced_dims_dataset, sgrid_datasets_varying_dims
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
 from parcels._sgrid.accessor import SGridDatasetInconsistency
 
@@ -457,6 +460,128 @@ def test_fieldset_add_context_values():
 
     assert fset.context["c1"] == 1.0
     assert fset.context["c2"] == 2.0
+
+
+def _field_name_of(ds):
+    (name,) = [name for name in ds.data_vars if ds[name].attrs.get("cf_role") != "grid_topology"]
+    return name
+
+
+def _expected_grid_axes(ds):
+    axes = {
+        ds[dim].attrs["axis"] for dim in ds.dims if dim in ds.coords and ds[dim].attrs.get("axis") in {"X", "Y", "Z"}
+    }
+    return sorted(axes, key="ZYX".index)
+
+
+def _expected_field_shape(ds, field_name):
+    sizes = dict.fromkeys("TZYX", 1)
+    for dim in ds[field_name].dims:
+        axis = ds[dim].attrs.get("axis")
+        if axis in sizes:
+            sizes[axis] = ds.sizes[dim]
+    return tuple(sizes[axis] for axis in "TZYX")
+
+
+def _expected_time_interval(datasets):
+    intervals = [
+        (ds["time"].values[0], ds["time"].values[-1]) for ds in datasets if "time" in ds.dims and ds.sizes["time"] > 1
+    ]
+    if not intervals:
+        return None
+    left = max(interval[0] for interval in intervals)
+    right = min(interval[1] for interval in intervals)
+    return TimeInterval(left, right) if left < right else None
+
+
+@given(datasets=sgrid_datasets_varying_dims(min_models=2, max_models=5))
+@settings(deadline=None, max_examples=50)
+def test_fieldset_add_varying_grid_dimensionality(datasets):
+    """Models with grids of varying dimensionality (0D-4D) can be combined into one FieldSet."""
+    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    combined = fieldsets[0]
+    for fieldset in fieldsets[1:]:
+        combined = combined + fieldset
+
+    assert len(combined.models) == len(datasets)
+    assert set(combined.fields) == {_field_name_of(ds) for ds in datasets}
+    assert len(combined.gridset) == len(datasets)
+    assert combined.time_interval == _expected_time_interval(datasets)
+
+    for ds, model in zip(datasets, combined.models, strict=True):
+        name = _field_name_of(ds)
+        field = combined.fields[name]
+        # The field keeps the grid (and hence the dimensionality) of the model it originates from
+        assert field.grid is model.grid
+        assert field.grid.axes == _expected_grid_axes(ds)
+        assert field.data.shape == _expected_field_shape(ds, name)
+        if "time" in ds.dims and ds.sizes["time"] > 1:
+            assert field.time_interval == model.time_interval
+        else:
+            assert field.time_interval is None
+        # The field evaluates to its constant value at an interior point of its grid
+        value = float(ds[name].values.flat[0])
+        assert field.eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(value, rel=1e-9)
+
+    io = StringIO()
+    combined.describe(io)
+    for ds in datasets:
+        assert _field_name_of(ds) in io.getvalue()
+
+
+@given(datasets=sgrid_datasets_varying_dims(min_models=2, max_models=4, require_spatial_axis=True))
+@settings(deadline=None, max_examples=25)
+def test_fieldset_add_varying_grid_dimensionality_execute(datasets):
+    """A FieldSet combining models with 1D-4D grids can be used to execute particles.
+
+    Models with 0D (spatially constant) grids are excluded, as sampling such fields from a
+    kernel is not supported yet (issue #2054).
+    """
+    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    combined = fieldsets[0]
+    for fieldset in fieldsets[1:]:
+        combined = combined + fieldset
+
+    names = [_field_name_of(ds) for ds in datasets]
+    values = [float(ds[name].values.flat[0]) for ds, name in zip(datasets, names, strict=True)]
+
+    def SampleFields(particles, fieldset):
+        for name in names:
+            setattr(particles, f"sampled_{name}", getattr(fieldset, name)[particles])
+
+    pclass = Particle.add_variable([Variable(f"sampled_{name}", dtype=np.float64) for name in names])
+    pset = ParticleSet(combined, pclass=pclass, x=[0.5], y=[0.5], z=[0.5], t=np.timedelta64(0, "s"))
+    pset.execute(SampleFields, runtime=np.timedelta64(1, "s"), dt=np.timedelta64(1, "s"))
+
+    for name, value in zip(names, values, strict=True):
+        assert getattr(pset, f"sampled_{name}")[0] == pytest.approx(value, rel=1e-9)
+
+
+@pytest.mark.parametrize(
+    "spatial_axes,n_times",
+    [
+        pytest.param(frozenset("XYZ"), 0, id="3d_spatial_no_time"),
+        pytest.param(frozenset("XY"), 0, id="2d_spatial_no_time"),
+        pytest.param(frozenset("XY"), 1, id="2d_spatial_single_time"),
+        pytest.param(frozenset("Z"), 0, id="1d_spatial_no_time"),
+        pytest.param(frozenset("Z"), 1, id="1d_spatial_single_time"),
+        pytest.param(frozenset(), 2, id="0d_spatial_time_varying"),
+    ],
+)
+def test_fieldset_add_4d_base_and_reduced_dims_model(spatial_axes, n_times):
+    """A full 4D FieldSet supports adding models of reduced grid dimensionality."""
+    base = reduced_dims_dataset(frozenset("XYZ"), (3, 0), "base_field", value=1.0)
+    reduced = reduced_dims_dataset(spatial_axes, (n_times, 0), "reduced_field", value=2.0)
+
+    combined = FieldSet.from_sgrid_conventions(base, mesh="flat") + FieldSet.from_sgrid_conventions(
+        reduced, mesh="flat"
+    )
+
+    assert len(combined.models) == 2
+    assert set(combined.fields) == {"base_field", "reduced_field"}
+    assert combined.fields["reduced_field"].grid.axes == _expected_grid_axes(reduced)
+    assert combined.fields["base_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(1.0, rel=1e-9)
+    assert combined.fields["reduced_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(2.0, rel=1e-9)
 
 
 def test_fieldset_describe(fieldset_two_models: FieldSet):

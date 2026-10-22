@@ -72,6 +72,11 @@ _ODIE_REGISTRY_FILES: list[str] = (
         "data/SCHISM_LakeOntario/horizontalVelY.schism_lake_ontario.nc",
     ]
     + [
+        "data/MOM6_example_data/mom6_ssu.nc",
+        "data/MOM6_example_data/mom6_ssv.nc",
+        "data/MOM6_example_data/mom6_static.nc",
+    ]
+    + [
         "data/NemoCurvilinear_data/U_purely_zonal-ORCA025_grid_U.nc4",
         "data/NemoCurvilinear_data/V_purely_zonal-ORCA025_grid_V.nc4",
         "data/NemoCurvilinear_data/mesh_mask.nc4",
@@ -246,6 +251,9 @@ _DATASET_KEYS_AND_CONFIGS: dict[str, tuple[_ParcelsDataset, _Purpose]] = dict([
     ("SCHISM_LakeOntario/out2d", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/out2d.schism_lake_ontario.nc"), _Purpose.TUTORIAL)),
     ("SCHISM_LakeOntario/horizontalVelX", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/horizontalVelX.schism_lake_ontario.nc"), _Purpose.TUTORIAL)),
     ("SCHISM_LakeOntario/horizontalVelY", (_V3Dataset(_ODIE,"data/SCHISM_LakeOntario/horizontalVelY.schism_lake_ontario.nc"), _Purpose.TUTORIAL)),
+    ("MOM6_example_data/U", (_V3Dataset(_ODIE,"data/MOM6_example_data/mom6_ssu.nc"), _Purpose.TUTORIAL)),
+    ("MOM6_example_data/V", (_V3Dataset(_ODIE,"data/MOM6_example_data/mom6_ssv.nc"), _Purpose.TUTORIAL)),
+    ("MOM6_example_data/static", (_V3Dataset(_ODIE,"data/MOM6_example_data/mom6_static.nc"), _Purpose.TUTORIAL)),
     ("NemoCurvilinear_data_zonal/U", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/U_purely_zonal-ORCA025_grid_U.nc4"), _Purpose.TUTORIAL)),
     ("NemoCurvilinear_data_zonal/V", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/V_purely_zonal-ORCA025_grid_V.nc4"), _Purpose.TUTORIAL)),
     ("NemoCurvilinear_data_zonal/mesh_mask", (_V3Dataset(_ODIE,"data/NemoCurvilinear_data/mesh_mask.nc4", _preprocess_drop_time_from_mesh2), _Purpose.TUTORIAL)),

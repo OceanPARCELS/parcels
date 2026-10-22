@@ -344,10 +344,10 @@ Remove the <code>chunks</code> argument from your code
 <hr class="migration-divider" />
 
 <div class="migration-bubble migration-change">
-<code>ParticleFile</code> does not have a <code>to_write</code> argument
+<code>ParticleFile</code> does not have a <code>to_write="once"</code> argument
 </div>
 <div class="migration-bubble migration-how">
-Remove the <code>to_write</code> argument from your code
+Either write all timesteps of a variable, or none
 </div>
 <hr class="migration-divider" />
 

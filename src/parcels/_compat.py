@@ -11,7 +11,7 @@ class _AttrgetterHelper:
     >>> _attrgetter_helper.some_attribute
     'some_attribute'
     >>> from operator import attrgetter
-    >>> attrgetter('some_attribute')(_attrgetter_helper)
+    >>> attrgetter("some_attribute")(_attrgetter_helper)
     'some_attribute'
     """
 

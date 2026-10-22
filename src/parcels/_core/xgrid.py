@@ -283,9 +283,8 @@ class XGrid(BaseGrid):
 
         Example
         -------
-        >>> position = {'X': (5, 0.51), 'Y': (
-            10, 0.25), 'Z': (3, 0.75)}
-        >>> dims = ['time', 'depth', 'YC', 'XC']
+        >>> position = {"X": (5, 0.51), "Y": (10, 0.25), "Z": (3, 0.75)}
+        >>> dims = ["time", "depth", "YC", "XC"]
         >>> grid.localize(position, dims)
         {'depth': (3, 0.75), 'YC': (9, 0.75), 'XC': (5, 0.01)}
         """
@@ -441,7 +440,7 @@ class XGrid(BaseGrid):
 
         Examples
         --------
-        >>> grid.get_axis_dim_mapping(['time', 'lat', 'lon'])
+        >>> grid.get_axis_dim_mapping(["time", "lat", "lon"])
         {'Y': 'lat', 'X': 'lon'}
 
         Notes
