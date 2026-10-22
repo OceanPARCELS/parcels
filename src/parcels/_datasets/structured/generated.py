@@ -10,19 +10,20 @@ from parcels._core.utils.time import timedelta_to_float
 def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh="spherical"):
     max_lon = 180.0 if mesh == "spherical" else 1e6
     max_lat = 90.0 if mesh == "spherical" else 1e6
+    unit = "degrees" if mesh == "spherical" else "m"
     shape = (n_times, nz, ny, nx)
 
     return xr.Dataset(
         {"U": (["time", "depth", "YG", "XG"], np.zeros(shape)), "V": (["time", "depth", "YG", "XG"], np.zeros(shape))},
         coords={
             "time": (["time"], xr.date_range("2000", "2001", n_times), {"axis": "T"}),
-            "depth": (["depth"], np.linspace(0, maxdepth, nz), {"axis": "Z"}),
-            "YC": (["YC"], np.arange(ny) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(ny), {"axis": "Y"}),
-            "XC": (["XC"], np.arange(nx) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(nx), {"axis": "X"}),
-            "lat": (["YG"], np.linspace(-max_lat, max_lat, ny), {"axis": "Y"}),
-            "lon": (["XG"], np.linspace(-max_lon, max_lon, nx), {"axis": "X"}),
+            "depth": (["depth"], np.linspace(0, maxdepth, nz), {"axis": "Z", "units": "m"}),
+            "YC": (["YC"], np.arange(ny) + 0.5, {"axis": "Y", "units": unit}),
+            "YG": (["YG"], np.arange(ny), {"axis": "Y", "units": unit}),
+            "XC": (["XC"], np.arange(nx) + 0.5, {"axis": "X", "units": unit}),
+            "XG": (["XG"], np.arange(nx), {"axis": "X", "units": unit}),
+            "lat": (["YG"], np.linspace(-max_lat, max_lat, ny), {"axis": "Y", "units": unit}),
+            "lon": (["XG"], np.linspace(-max_lon, max_lon, nx), {"axis": "X", "units": unit}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,

@@ -48,11 +48,11 @@ def field():
         {"P": (["time", "depth", "lat", "lon"], temporal_data)},
         coords={
             "time": (["time"], [np.timedelta64(t, "s") for t in [0, 2, 4]], {"axis": "T"}),
-            "depth": (["depth"], [0, 1, 2, 3], {"axis": "Z"}),
-            "lat": (["lat"], [0, 1, 2, 3], {"axis": "Y"}),
-            "lon": (["lon"], [0, 1, 2, 3], {"axis": "X"}),
-            "x": (["x"], [0.5, 1.5, 2.5, 3.5], {"axis": "X"}),
-            "y": (["y"], [0.5, 1.5, 2.5, 3.5], {"axis": "Y"}),
+            "depth": (["depth"], [0, 1, 2, 3], {"axis": "Z", "units": "m"}),
+            "lat": (["lat"], [0, 1, 2, 3], {"axis": "Y", "units": "m"}),
+            "lon": (["lon"], [0, 1, 2, 3], {"axis": "X", "units": "m"}),
+            "x": (["x"], [0.5, 1.5, 2.5, 3.5], {"axis": "X", "units": "m"}),
+            "y": (["y"], [0.5, 1.5, 2.5, 3.5], {"axis": "Y", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -68,7 +68,7 @@ def field():
             vertical_dimensions=(sgrid.FaceNodePadding("ZC", "depth", sgrid.Padding.HIGH),),
         ),
     )
-    field = FieldSet.from_sgrid_conventions(ds, mesh="flat").P
+    field = FieldSet.from_sgrid_conventions(ds).P
     assert isinstance(field.interp_method, XLinear)
 
     return field
@@ -190,7 +190,7 @@ def test_invdistland_interpolation(field, interpolator, t, z, y, x, expected):
 def test_interpolation_mesh_type(mesh, npart=10):
     ds = simple_UV_dataset(mesh=mesh)
     ds["U"].data[:] = 1.0
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     lat = 30.0
     time = 0.0
@@ -322,13 +322,13 @@ def test_interp_regression_v3(interp_name, interp_method, tmp_zarr, tmp_parquet)
         },
         coords={
             "time": (["time"], time, {"axis": "T"}),
-            "depth": (["depth"], ds_input["depth"].values, {"axis": "Z"}),
-            "YC": (["YC"], np.arange(ydim) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
-            "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], ds_input["lat"].values, {"axis": "Y"}),
-            "lon": (["XG"], ds_input["lon"].values, {"axis": "X"}),
+            "depth": (["depth"], ds_input["depth"].values, {"axis": "Z", "units": "m"}),
+            "YC": (["YC"], np.arange(ydim) + 0.5, {"axis": "Y", "units": "m"}),
+            "YG": (["YG"], np.arange(ydim), {"axis": "Y", "units": "m"}),
+            "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X", "units": "m"}),
+            "XG": (["XG"], np.arange(xdim), {"axis": "X", "units": "m"}),
+            "lat": (["YG"], ds_input["lat"].values, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], ds_input["lon"].values, {"axis": "X", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -345,7 +345,7 @@ def test_interp_regression_v3(interp_name, interp_method, tmp_zarr, tmp_parquet)
         ),
     )
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     if interp_name in ["cgrid_velocity", "freeslip", "nearest"]:
         fieldset.UVW.interp_method = interp_method()
 

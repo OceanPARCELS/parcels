@@ -49,7 +49,7 @@ def test_advection_zonal(mesh, npart=10):
     """Particles at high latitude move geographically faster due to the pole correction."""
     ds = simple_UV_dataset(mesh=mesh)
     ds["U"].data[:] = 1.0
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     runtime = 7200
     startlat = np.linspace(0, 80, npart)
@@ -70,7 +70,7 @@ def test_advection_zonal_with_particlefile(tmp_parquet):
     npart = 10
     ds = simple_UV_dataset(mesh="flat")
     ds["U"].data[:] = 1.0
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     pset = ParticleSet(fieldset, x=np.zeros(npart) + 20.0, y=np.linspace(0, 80, npart))
     pfile = ParticleFile(tmp_parquet, outputdt=np.timedelta64(30, "m"))
@@ -104,7 +104,7 @@ def test_advection_zonal_periodic():
         XC=("XC", ds.XG.values + 0.5, {"axis": "X"})
     )  # update cell centers to adjust for added halo
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     PeriodicParticle = Particle.add_variable(Variable("total_dlon", initial=0))
     startlon = np.array([0.5, 0.4])
@@ -120,7 +120,7 @@ def test_advection_meridional(mesh, npart=10):
     """All particles move the same in meridional direction, regardless of latitude."""
     ds = simple_UV_dataset(mesh=mesh)
     ds["V"].data[:] = 1.0
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     runtime = 7200
     startlat = np.linspace(0, 80, npart)
@@ -142,7 +142,7 @@ def test_horizontal_advection_in_3D_flow(mesh, npart=10):
     ds = simple_UV_dataset(mesh=mesh)
     ds["U"].data[:] = 1.0
     ds["U"].data[:, 0, :, :] = 0.0  # Set U to 0 at the surface
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     pset = ParticleSet(fieldset, x=np.zeros(npart), y=np.zeros(npart), z=np.linspace(0.1, 0.9, npart))
     pset.execute(AdvectionRK4, runtime=np.timedelta64(2, "h"), dt=np.timedelta64(15, "m"))
@@ -160,7 +160,7 @@ def test_advection_3D_outofbounds(direction, resubmerge_particle):
     ds["W"] = ds["V"].copy()  # Just to have W field present
     ds["U"].data[:] = 0.01  # Set U to small value (to avoid horizontal out of bounds)
     ds["W"].data[:] = -1.0 if direction == "up" else 1.0
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     def DeleteParticle(particles, fieldset):  # pragma: no cover
         particles.state = np.where(particles.state == StatusCode.ErrorOutOfBounds, StatusCode.Delete, particles.state)
