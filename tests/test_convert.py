@@ -271,3 +271,11 @@ def test_mom6_to_sgrid_inconsistent_sizes():
     V = V.isel(xh=slice(0, -2))  # two fewer centres than corners along X
     with pytest.raises(ValueError, match="Unexpected MOM6 grid sizes"):
         convert.mom6_to_sgrid(fields={"U": U, "V": V}, coords=coords)
+
+
+def test_mom6_to_sgrid_withdepth():
+    U, V, coords = _mom6_synthetic(symmetric=True)
+    U = U.expand_dims(depth=[0], axis=1)
+    V = V.expand_dims(depth=[0], axis=1)
+    with pytest.raises(ValueError, match="has more than 2 spatial dimensions"):
+        convert.mom6_to_sgrid(fields={"U": U, "V": V}, coords=coords)
