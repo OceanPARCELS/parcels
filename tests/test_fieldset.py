@@ -676,6 +676,6 @@ def test_fieldset_from_simple_UV_sigma_dataset(n_snapshots):
     fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
 
     depth = fieldset.U.grid._ds["depth"]
-    assert depth.dims == ("time", "depth", "YC", "XC")
+    assert depth.dims == ("time", "ZF", "YC", "XC")
     assert depth.sizes["time"] == n_snapshots
     assert fieldset.U.grid.get_axis_dim("Z") == nz
