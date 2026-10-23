@@ -265,7 +265,7 @@ class FieldSet:
     def from_ugrid_conventions(
         cls,
         ds: ux.UxDataset,
-        mesh: str = "spherical",
+        mesh: ptyping.TMesh | None = None,
         vector_fields: ptyping.VectorFields | NotSetType = NOTSET,
     ):
         """Create a FieldSet from a Parcels compliant uxarray.UxDataset.
@@ -281,6 +281,10 @@ class FieldSet:
         ----------
         ds : uxarray.UxDataset
             uxarray.UxDataset as obtained from the uxarray package but with appropriate named vertical dimensions
+        mesh : FlatMesh or SphericalMesh, optional
+            Mesh object indicating the type of mesh coordinates used during velocity interpolation, e.g.
+            ``FlatMesh()`` or ``SphericalMesh(radius=...)``. Default is None, in which case the mesh type will be
+            inferred from the units of the ``node_lon`` and ``node_lat`` coordinates of the grid.
         vector_fields : Mapping[str, tuple[str, ...]], optional
             Mapping of vector field names to tuples of component variable names in the dataset.
             For example, ``{"UV": ("U", "V"), "UVW": ("U", "V", "W")}``.

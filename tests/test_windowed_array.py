@@ -7,7 +7,7 @@ import xarray as xr
 
 from parcels import FieldSet, ParticleSet
 from parcels._core._windowed_array import WindowedArray, maybe_windowed
-from parcels._core.mesh import FlatMesh
+from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._datasets.structured.generated import simple_UV_dataset
 from parcels._datasets.unstructured.generic import _ux_constant_flow_face_centered_2D
 from parcels.kernels import AdvectionRK2
@@ -77,7 +77,7 @@ def test_windowed_isel_backward_clock_loads_once_and_evicts():
     "fset_convention, ds, mesh",
     [
         (FieldSet.from_sgrid_conventions, simple_UV_dataset(mesh="flat"), FlatMesh()),
-        (FieldSet.from_ugrid_conventions, _ux_constant_flow_face_centered_2D(), "flat"),
+        (FieldSet.from_ugrid_conventions, _ux_constant_flow_face_centered_2D(), FlatMesh()),
     ],
     ids=["structured", "unstructured"],
 )
@@ -105,7 +105,7 @@ def test_windowed_arrays_wraps_dask_but_not_numpy(fset_convention: callable, ds:
     "fset_convention, ds, mesh",
     [
         (FieldSet.from_sgrid_conventions, simple_UV_dataset(mesh="flat"), FlatMesh()),
-        (FieldSet.from_ugrid_conventions, _ux_constant_flow_face_centered_2D(), "flat"),
+        (FieldSet.from_ugrid_conventions, _ux_constant_flow_face_centered_2D(), FlatMesh()),
     ],
     ids=["structured", "unstructured"],
 )
@@ -180,7 +180,7 @@ def test_dask_advection_matches_numpy_on_structured_grids(mesh, dt_minutes):
     np.testing.assert_allclose(y_dk, y_np, atol=1e-9)
 
 
-@pytest.mark.parametrize("mesh", ["flat", "spherical"])
+@pytest.mark.parametrize("mesh", [FlatMesh(), SphericalMesh()])
 @pytest.mark.parametrize("dt_minutes", [15, -15], ids=["forward", "backward"])
 def test_dask_advection_matches_numpy_on_unstructured_grids(mesh, dt_minutes):
     """An identical advection must give identical trajectories whether the field

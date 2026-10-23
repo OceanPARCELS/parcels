@@ -9,7 +9,7 @@ from dask import is_dask_collection
 
 from parcels._core.basegrid import BaseGrid
 from parcels._core.index_search import GRID_SEARCH_ERROR, _search_1d_array, _search_1d_columns, uxgrid_point_in_cell
-from parcels._core.mesh import SphericalMesh, get_mesh
+from parcels._core.mesh import BaseMesh, TMesh, _infer_mesh_from_coordinates
 from parcels._core.warnings import FieldSetWarning
 
 if TYPE_CHECKING:
@@ -24,9 +24,7 @@ class UxGrid(BaseGrid):
     for interpolation on unstructured grids.
     """
 
-    def __init__(
-        self, grid: ux.grid.Grid, z: ux.UxDataArray, mesh: Literal["flat", "spherical"] | SphericalMesh
-    ) -> None:
+    def __init__(self, grid: ux.grid.Grid, z: ux.UxDataArray, mesh: TMesh | None = None) -> None:
         """
         Initializes the UxGrid with a uxarray grid and vertical coordinate array.
 
@@ -38,8 +36,10 @@ class UxGrid(BaseGrid):
             Vertical coordinates (depths) of the layer interface heights (not the mid-layer depths). Either a 1D array,
             constant in time and space (flat bottom topography, no moving vertical grid), or a 3D array with dims
             ("time", "zf", "n_node"), varying in time and across the mesh nodes.
-        mesh : str
-            The type of mesh used for the grid. Either "flat" or "spherical".
+        mesh : FlatMesh or SphericalMesh, optional
+            The mesh of the grid, e.g. ``FlatMesh()`` or ``SphericalMesh(radius=...)``. Default is None, in which case
+            the mesh is inferred from the units of the ``node_lon`` and ``node_lat`` coordinates of the grid
+            (degrees give a ``SphericalMesh``, anything else a ``FlatMesh``).
         """
         import uxarray as ux
 
@@ -63,7 +63,11 @@ class UxGrid(BaseGrid):
                 stacklevel=4,
             )
         self.z = z
-        self.mesh = get_mesh(mesh)
+        if mesh is None:
+            mesh = _infer_mesh_from_coordinates(grid.node_lon, grid.node_lat)
+        elif not isinstance(mesh, BaseMesh):
+            raise TypeError(f"mesh must be a FlatMesh or SphericalMesh object. Got {mesh=!r}")
+        self.mesh = mesh
         self._spatialhash = None
         if is_dask_collection(self.uxgrid.face_node_connectivity.data):
             self.uxgrid.face_node_connectivity.load()

@@ -14,7 +14,7 @@ from parcels._chunk_cached_array import wrap_dataset
 from parcels._core._windowed_array import maybe_windowed
 from parcels._core.basegrid import BaseGrid
 from parcels._core.field import Field, VectorField
-from parcels._core.mesh import FlatMesh, SphericalMesh
+from parcels._core.mesh import FlatMesh, SphericalMesh, _infer_mesh_from_coordinates
 from parcels._core.utils.time import TimeInterval
 from parcels._core.uxgrid import UxGrid
 from parcels._core.xgrid import (
@@ -389,7 +389,7 @@ class UnstructuredModelData(ModelData):
 
     @classmethod
     def from_ugrid_conventions(
-        cls, ds: ux.UxDataset, *, mesh: ptyping.TMesh, vector_fields: ptyping.VectorFields | NotSetType
+        cls, ds: ux.UxDataset, *, mesh: ptyping.TMesh | None = None, vector_fields: ptyping.VectorFields | NotSetType
     ):
         ds_dims = list(ds.dims)
         if not all(dim in ds_dims for dim in ["time", "zf", "zc"]):
@@ -420,15 +420,7 @@ def _get_mesh_type_from_sgrid_dataset(ds_sgrid: xr.Dataset) -> ptyping.TMesh:
 
     fpoint_x, fpoint_y = sgrid_metadata.node_coordinates
 
-    if _is_coordinate_in_degrees(ds_sgrid[fpoint_x]) ^ _is_coordinate_in_degrees(ds_sgrid[fpoint_y]):
-        msg = (
-            f"Mismatch in units between X and Y coordinates.\n"
-            f"  Coordinate {ds_sgrid[fpoint_x]!r} attrs: {ds_sgrid[fpoint_x].attrs}\n"
-            f"  Coordinate {ds_sgrid[fpoint_y]!r} attrs: {ds_sgrid[fpoint_y].attrs}\n"
-        )
-        raise ValueError(msg)
-
-    return SphericalMesh() if _is_coordinate_in_degrees(ds_sgrid[fpoint_x]) else FlatMesh()
+    return _infer_mesh_from_coordinates(ds_sgrid[fpoint_x], ds_sgrid[fpoint_y])
 
 
 def _default_vector_field_components(data_vars: Sequence[Hashable]) -> ptyping.VectorFields:
@@ -440,17 +432,6 @@ def _default_vector_field_components(data_vars: Sequence[Hashable]) -> ptyping.V
     if {"U", "V", "W"}.issubset(vars):
         ret["UVW"] = ("U", "V", "W")
     return ret
-
-
-def _is_coordinate_in_degrees(da: xr.DataArray) -> bool:
-    units = da.attrs.get("units")
-    if units is None:
-        raise ValueError(
-            f"Coordinate {da.name!r} of your dataset has no 'units' attribute - we don't know what the spatial units are."
-        )
-    if isinstance(units, str) and "degree" in units.lower():
-        return True
-    return False
 
 
 def _discover_ux_U_and_V(ds: ux.UxDataset) -> ux.UxDataset:

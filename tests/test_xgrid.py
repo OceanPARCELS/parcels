@@ -91,7 +91,7 @@ def test_xgrid_mesh_inferred_from_units(ds, mesh):
 @pytest.mark.parametrize("ds", [datasets["ds_2d_left"]])
 def test_transpose_xfield_data_to_tzyx(ds):
     da = ds["data_g"]
-    grid = XGrid.from_dataset(ds, mesh="flat")
+    grid = XGrid.from_dataset(ds)
 
     all_combinations = (itertools.combinations(da.dims, n) for n in range(len(da.dims)))
     all_combinations = itertools.chain(*all_combinations)
@@ -126,7 +126,7 @@ def test_invalid_lon_lat():
         ValueError,
         match=r".*is defined on the center of the grid, but must be defined on the F points\.",
     ):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
     ds = datasets["ds_2d_left"].copy()
     ds["lon"], _ = xr.broadcast(ds["YG"], ds["XG"])
@@ -134,7 +134,7 @@ def test_invalid_lon_lat():
         ValueError,
         match=r".*have different dimensionalities\.",
     ):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
     ds = datasets["ds_2d_left"].copy()
     ds["lon"], ds["lat"] = xr.broadcast(ds["YG"], ds["XG"])
@@ -144,7 +144,7 @@ def test_invalid_lon_lat():
         ValueError,
         match=r".*must be defined on the X and Y axes and transposed to have dimensions in order of Y, X\.",
     ):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
 
 @pytest.mark.skip(
@@ -155,7 +155,7 @@ def test_invalid_depth():
     ds = ds.reindex({"ZG": ds.ZG[::-1]})
 
     with pytest.raises(ValueError, match="Depth DataArray .* must be strictly increasing*"):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
 
 @pytest.mark.skip(
@@ -352,7 +352,7 @@ def test_search_1d_array_some_out_of_bounds(search_1d, array, x, expected_xi):
 )
 def test_xgrid_localize_zero_position(ds, da_name, expected):
     """Test localize function using left and right datasets."""
-    grid = XGrid.from_dataset(ds, mesh="flat")
+    grid = XGrid.from_dataset(ds)
     da = ds[da_name]
     position = grid.search(0, 0, 0)
 

@@ -15,6 +15,7 @@ from parcels import (
     StatusCode,
     Variable,
 )
+from parcels._core.mesh import FlatMesh
 from parcels._core.statuscodes import GridSearchingError
 from parcels._core.utils.time import timedelta_to_float
 from parcels._datasets.structured.generated import simple_UV_dataset
@@ -534,7 +535,7 @@ def test_execution_update_particle_in_kernel_function(fieldset, kernel_names, ex
 
 def test_uxstommelgyre_pset_execute():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     pset = ParticleSet(
         fieldset,
         x=[30.0],
@@ -554,7 +555,7 @@ def test_uxstommelgyre_pset_execute():
 
 def test_uxstommelgyre_multiparticle_pset_execute():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     pset = ParticleSet(
         fieldset,
         x=[30.0, 32.0],
@@ -573,7 +574,7 @@ def test_uxstommelgyre_multiparticle_pset_execute():
 @pytest.mark.xfail(reason="Output file not implemented yet")
 def test_uxstommelgyre_pset_execute_output():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     pset = ParticleSet(
         fieldset,
         x=[30.0],
@@ -598,7 +599,7 @@ def test_uxgrid_particle_leaving_domain_raises():
     ``GRID_SEARCH_ERROR`` and ``pset.execute`` should raise a GridSearchingError.
     """
     ds = datasets_unstructured["ux_constant_flow_face_centered_2D"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
     assert isinstance(fieldset.U.interp_method, UxConstantFaceConstantZC)
     assert isinstance(fieldset.V.interp_method, UxConstantFaceConstantZC)
     assert isinstance(fieldset.UV.interp_method, Ux_Velocity)

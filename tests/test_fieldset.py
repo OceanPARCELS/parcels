@@ -187,7 +187,7 @@ def test_fieldset_structured_vectorfield_empty():
 
 def test_fieldset_unstructured_vectorfield_default():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fset = FieldSet.from_ugrid_conventions(ds)
 
     assert "U" in fset.fields
     assert "V" in fset.fields
@@ -198,7 +198,7 @@ def test_fieldset_unstructured_vectorfield_custom():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
     ds = ds.rename({"U": "U_wind", "V": "V_wind"})
 
-    fset = FieldSet.from_ugrid_conventions(ds, mesh="spherical", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset = FieldSet.from_ugrid_conventions(ds, vector_fields={"UV_wind": ("U_wind", "V_wind")})
 
     assert "U_wind" in fset.fields
     assert "V_wind" in fset.fields
@@ -208,7 +208,7 @@ def test_fieldset_unstructured_vectorfield_custom():
 def test_fieldset_unstructured_vectorfield_empty():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
 
-    fset = FieldSet.from_ugrid_conventions(ds, mesh="spherical", vector_fields={})
+    fset = FieldSet.from_ugrid_conventions(ds, vector_fields={})
 
     assert "U" in fset.fields
     assert "V" in fset.fields

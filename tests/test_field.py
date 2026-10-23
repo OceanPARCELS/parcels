@@ -139,7 +139,7 @@ def test_field_unstructured_z_linear():
     for k, z in enumerate(ds.coords["zf"]):
         ds["W"].values[:, k, :] = z
 
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     # Note that the vertical coordinate is required to be the position of the layer interfaces ("nz"), not the mid-layers ("nz1")
     P = fieldset.p
     W = fieldset.W
@@ -176,7 +176,7 @@ def test_field_unstructured_z_linear():
 
 def test_field_constant_in_time():
     """Tests field evaluation for a field with no time interval (i.e., constant in time)."""
-    fieldset = FieldSet.from_ugrid_conventions(datasets_unstructured["stommel_gyre_delaunay"], mesh="flat")
+    fieldset = FieldSet.from_ugrid_conventions(datasets_unstructured["stommel_gyre_delaunay"])
     # Note that the vertical coordinate is required to be the position of the layer interfaces ("nz"), not the mid-layers ("nz1")
     P = fieldset.p
     assert isinstance(P.interp_method, UxConstantFaceConstantZC)
@@ -233,7 +233,7 @@ def test_field_eval_out_of_bounds_structured(field_name, location, expected):
 def test_field_eval_out_of_bounds_unstructured(field_name, location, expected):
     """Test that Field.eval returns IndexError when queried outside the grid boundaries."""
     ds = _ux_constant_flow_face_centered_2D()
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     fieldset.U.data[:] = 1.0
     fieldset.V.data[:] = 2.0
     field = getattr(fieldset, field_name)
