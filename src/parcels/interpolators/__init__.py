@@ -2,6 +2,8 @@ from ._uxinterpolators import (
     Ux_Velocity,
     UxConstantFaceConstantZC,
     UxConstantFaceLinearZF,
+    UxConstantEdgeConstantZC,
+    UxConstantEdgeLinearZF,
     UxLinearNodeConstantZC,
     UxLinearNodeLinearZF,
 )

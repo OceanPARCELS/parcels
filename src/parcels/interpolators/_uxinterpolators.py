@@ -155,6 +155,74 @@ class UxLinearNodeLinearZF(ScalarInterpolator):
         return value.compute() if is_dask_collection(value) else value
 
 
+class UxConstantEdgeConstantZC(ScalarInterpolator):
+    """
+    Piecewise constant interpolation kernel for edge registered data that is vertically centered (on zc points).
+    Face values are taken to be the mean of the surrounding edges.
+    """
+
+    def interp(
+        self,
+        particle_positions: dict[str, float | np.ndarray],
+        grid_positions: dict[_UXGRID_AXES, dict[str, int | float | np.ndarray]],
+        field: Field,
+    ):
+        # Broadcast the per-axis indices to a common (npart,) shape (``ti`` may be scalar for time-constant fields)
+        ti, zi, fi = np.broadcast_arrays(
+            grid_positions["T"]["index"], grid_positions["Z"]["index"], grid_positions["FACE"]["index"]
+        )
+        edge_ids = field.grid.uxgrid.face_edge_connectivity[fi, :].values
+
+        tdim, zdim, edim = field.data.dims
+        selection_dict = {
+            tdim: xr.DataArray(ti, dims="points"),
+            zdim: xr.DataArray(zi, dims="points"),
+            edim: xr.DataArray(edge_ids, dims=("points", "edges")),
+        }
+        edge_data = field.data.isel(selection_dict, ignore_grid=True)
+        value = edge_data.mean("edges").data  # Face value is the mean of its surrounding edges
+        return value.compute() if is_dask_collection(value) else value
+
+
+class UxConstantEdgeLinearZF(ScalarInterpolator):
+    """
+    Piecewise constant interpolation (lateral) with linear vertical interpolation kernel for edge registered data
+    that is located at vertical interface levels (on zf points).
+    Face values are taken to be the mean of the surrounding edges.
+    """
+
+    def interp(
+        self,
+        particle_positions: dict[str, float | np.ndarray],
+        grid_positions: dict[_UXGRID_AXES, dict[str, int | float | np.ndarray]],
+        field: Field,
+    ):
+        # Broadcast the per-axis indices to a common (npart,) shape (``ti`` may be scalar for time-constant fields)
+        ti, zi, fi = np.broadcast_arrays(
+            grid_positions["T"]["index"], grid_positions["Z"]["index"], grid_positions["FACE"]["index"]
+        )
+        zeta = grid_positions["Z"]["bcoord"]
+        edge_ids = field.grid.uxgrid.face_edge_connectivity[fi, :].values
+
+        tdim, zdim, edim = field.data.dims
+
+        def _zsample(z_index):
+            """Mean of the edge values surrounding each face at a single vertical interface level."""
+            selection_dict = {
+                tdim: xr.DataArray(ti, dims="points"),
+                zdim: xr.DataArray(z_index, dims="points"),
+                edim: xr.DataArray(edge_ids, dims=("points", "edges")),
+            }
+            edge_data = field.data.isel(selection_dict, ignore_grid=True)
+            return edge_data.mean("edges").data
+
+        # zi is the vertical layer index, bounded by the interface levels zi and zi + 1
+        fzk = _zsample(zi)
+        fzkp1 = _zsample(zi + 1)
+        value = fzk * (1 - zeta) + fzkp1 * zeta
+        return value.compute() if is_dask_collection(value) else value
+
+
 class Ux_Velocity(VectorInterpolator):  # noqa: N801
     """Interpolation kernel for Vectorfields of velocity on a UxGrid."""
 
