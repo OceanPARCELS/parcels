@@ -11,6 +11,7 @@ from parcels import (
     UxGrid,
     convert,
 )
+from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._core.model import UnstructuredModelData
 from parcels._datasets.unstructured.generated import sigma_coordinate_lattice_dataset
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
@@ -114,7 +115,7 @@ def test_fesom2_square_delaunay_antimeridian_eval():
 def test_icon_evals():
     ds = datasets_unstructured["icon_square_delaunay_uniform_z_coordinate"].copy(deep=True)
     ds = convert.icon_to_ugrid(ds)
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     # Query points, are chosen to be just a fraction off from the center of a cell for testing
     # This generic dataset has an effective lateral grid-spacing of 3 degrees and vertical grid
@@ -193,7 +194,7 @@ def test_nestedgrids_triangulation_spherical_search():
     uniform triangles.
     """
     grid = create_uxgrid_from_triangulation(
-        _NESTEDGRIDS_NODES[:, 0], _NESTEDGRIDS_NODES[:, 1], _NESTEDGRIDS_FACES, mesh="spherical"
+        _NESTEDGRIDS_NODES[:, 0], _NESTEDGRIDS_NODES[:, 1], _NESTEDGRIDS_FACES, mesh=SphericalMesh()
     )
 
     x, y = np.meshgrid(np.linspace(-8, 58, 25), np.linspace(-18, 38, 20))
@@ -224,7 +225,7 @@ RISING_ETA = np.broadcast_to(np.linspace(-1.0, 1.0, 3)[:, np.newaxis, np.newaxis
 def test_fieldset_from_sigma_coordinate_dataset(eta, expected_n_snapshots):
     nz = 4
     ds = sigma_coordinate_lattice_dataset(5, (0.0, 4e3), (0.0, 4e3), nz, SLOPING_BOTTOM_DEPTH, eta=eta)
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
 
     assert fieldset.U.grid.z.dims == ("time", "zf", "n_node")
     assert fieldset.U.grid.z.sizes["time"] == expected_n_snapshots
@@ -239,7 +240,7 @@ def test_unstructured_model_data_rejects_z_with_different_time_coordinate():
     ds_one_day_later = sigma_coordinate_lattice_dataset(
         5, (0.0, 4e3), (0.0, 4e3), 4, SLOPING_BOTTOM_DEPTH, RISING_ETA, start_time="2000-01-02"
     )
-    grid_with_later_z = UxGrid(ds.uxgrid, z=ds_one_day_later.coords["zf"], mesh="flat")
+    grid_with_later_z = UxGrid(ds.uxgrid, z=ds_one_day_later.coords["zf"], mesh=FlatMesh())
 
     with pytest.raises(ValueError, match="same time coordinate"):
         UnstructuredModelData(ds, grid_with_later_z, {})

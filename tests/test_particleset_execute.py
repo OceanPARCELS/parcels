@@ -15,6 +15,7 @@ from parcels import (
     StatusCode,
     Variable,
 )
+from parcels._core.mesh import FlatMesh
 from parcels._core.statuscodes import GridSearchingError
 from parcels._core.utils.time import timedelta_to_float
 from parcels._datasets.structured.generated import simple_UV_dataset
@@ -38,14 +39,14 @@ def fieldset_no_time_interval() -> FieldSet:
             "V_A_grid": "V",
         }
     )
-    return FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 @pytest.fixture
 def zonal_flow_fieldset() -> FieldSet:
-    ds = simple_UV_dataset(mesh="flat")
+    ds = simple_UV_dataset(mesh_str="flat")
     ds["U"].data[:] = 1.0
-    return FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 @pytest.fixture
@@ -56,12 +57,12 @@ def time_varying_zonal_flow_fieldset() -> FieldSet:
     clock and nothing else.
     """
     nt = 25
-    ds = simple_UV_dataset(n_times=nt, nz=2, ny=6, nx=6, mesh="flat")
+    ds = simple_UV_dataset(n_times=nt, nz=2, ny=6, nx=6, mesh_str="flat")
     times = np.array([np.timedelta64(3 * i, "h") for i in range(nt)])
     ds["time"] = ("time", times, {"axis": "T"})
     u = np.cos(2 * np.pi * (times / np.timedelta64(1, "s")) / 86400.0)  # 1 m/s, 1-day period
     ds["U"].data[:] = u[:, None, None, None]
-    return FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 def test_execute_trajectory_independent_of_other_particles_release_times(time_varying_zonal_flow_fieldset):
@@ -534,7 +535,7 @@ def test_execution_update_particle_in_kernel_function(fieldset, kernel_names, ex
 
 def test_uxstommelgyre_pset_execute():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     pset = ParticleSet(
         fieldset,
         x=[30.0],
@@ -554,7 +555,7 @@ def test_uxstommelgyre_pset_execute():
 
 def test_uxstommelgyre_multiparticle_pset_execute():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     pset = ParticleSet(
         fieldset,
         x=[30.0, 32.0],
@@ -573,7 +574,7 @@ def test_uxstommelgyre_multiparticle_pset_execute():
 @pytest.mark.xfail(reason="Output file not implemented yet")
 def test_uxstommelgyre_pset_execute_output():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_ugrid_conventions(ds)
     pset = ParticleSet(
         fieldset,
         x=[30.0],
@@ -598,7 +599,7 @@ def test_uxgrid_particle_leaving_domain_raises():
     ``GRID_SEARCH_ERROR`` and ``pset.execute`` should raise a GridSearchingError.
     """
     ds = datasets_unstructured["ux_constant_flow_face_centered_2D"]
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
     assert isinstance(fieldset.U.interp_method, UxConstantFaceConstantZC)
     assert isinstance(fieldset.V.interp_method, UxConstantFaceConstantZC)
     assert isinstance(fieldset.UV.interp_method, Ux_Velocity)

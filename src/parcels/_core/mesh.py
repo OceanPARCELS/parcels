@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    import xarray as xr
 
 EARTH_RADIUS = 6_366_707.019493707  # m
 
@@ -60,17 +65,31 @@ class FlatMesh(BaseMesh):
         return False
 
 
-TMesh = SphericalMesh | Literal["spherical", "flat"]  # corresponds with `mesh`
+TMesh = SphericalMesh | FlatMesh  # corresponds with `mesh`
 
 
-def get_mesh(mesh: TMesh):
-    if isinstance(mesh, SphericalMesh):
-        return mesh
-    if mesh == "flat":
-        return FlatMesh()
-    if mesh == "spherical":
-        return SphericalMesh(EARTH_RADIUS)
-    raise ValueError(f"mesh must be 'flat', 'spherical', or a SphericalMesh object. Got {mesh=!r}")
+def _is_coordinate_in_degrees(da: xr.DataArray) -> bool:
+    units = da.attrs.get("units")
+    if units is None:
+        raise ValueError(
+            f"Coordinate {da.name!r} of your dataset has no 'units' attribute - we don't know what the spatial units are."
+        )
+    if isinstance(units, str) and "degree" in units.lower():
+        return True
+    return False
+
+
+def _infer_mesh_from_coordinates(x: xr.DataArray, y: xr.DataArray) -> TMesh:
+    """Infer the mesh from the units of the horizontal coordinates: degrees give a SphericalMesh, anything else a FlatMesh."""
+    x_in_degrees = _is_coordinate_in_degrees(x)
+    if x_in_degrees ^ _is_coordinate_in_degrees(y):
+        msg = (
+            f"Mismatch in units between X and Y coordinates.\n"
+            f"  Coordinate {x.name!r} attrs: {x.attrs}\n"
+            f"  Coordinate {y.name!r} attrs: {y.attrs}\n"
+        )
+        raise ValueError(msg)
+    return SphericalMesh() if x_in_degrees else FlatMesh()
 
 
 def is_spherical(mesh: FlatMesh | SphericalMesh):

@@ -265,7 +265,7 @@ class FieldSet:
     def from_ugrid_conventions(
         cls,
         ds: ux.UxDataset,
-        mesh: str = "spherical",
+        mesh: SphericalMesh | None = None,
         vector_fields: ptyping.VectorFields | NotSetType = NOTSET,
     ):
         """Create a FieldSet from a Parcels compliant uxarray.UxDataset.
@@ -281,6 +281,10 @@ class FieldSet:
         ----------
         ds : uxarray.UxDataset
             uxarray.UxDataset as obtained from the uxarray package but with appropriate named vertical dimensions
+        mesh : FlatMesh or SphericalMesh, optional
+            Mesh object indicating the type of mesh coordinates used during velocity interpolation, e.g.
+            ``FlatMesh()`` or ``SphericalMesh(radius=...)``. Default is None, in which case the mesh type will be
+            inferred from the units of the ``node_lon`` and ``node_lat`` coordinates of the grid.
         vector_fields : Mapping[str, tuple[str, ...]], optional
             Mapping of vector field names to tuples of component variable names in the dataset.
             For example, ``{"UV": ("U", "V"), "UVW": ("U", "V", "W")}``.
@@ -302,10 +306,10 @@ class FieldSet:
     def from_sgrid_conventions(
         cls,
         ds: xr.Dataset,
-        mesh: ptyping.TMesh | None = None,
+        mesh: SphericalMesh | None = None,
         vector_fields: ptyping.VectorFields | NotSetType = NOTSET,
         skip_field_data_validation: bool = False,
-    ):  # TODO: Update mesh to be discovered from the dataset metadata
+    ):
         """Create a FieldSet from a dataset using SGRID convention metadata.
 
         This is the primary ingestion method in Parcels for structured grid datasets.
@@ -316,9 +320,11 @@ class FieldSet:
         ----------
         ds : xarray.Dataset
             xarray.Dataset with SGRID convention metadata.
-        mesh : str
-            String indicating the type of mesh coordinates used during
-            velocity interpolation. Options are "spherical" or "flat".
+        mesh : FlatMesh or SphericalMesh, optional
+            Mesh object indicating the type of mesh coordinates used during
+            velocity interpolation, e.g. ``FlatMesh()`` or ``SphericalMesh(radius=...)``.
+            Default is None, in which case the mesh type will be inferred
+            from the units of the dataset coordinates.
         vector_fields : Mapping[str, tuple[str, ...]], optional
             Mapping of vector field names to tuples of component variable names in the dataset.
             For example, ``{"UV": ("U", "V"), "UVW": ("U", "V", "W")}``.
