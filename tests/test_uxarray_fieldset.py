@@ -11,9 +11,9 @@ from parcels import (
     UxGrid,
     convert,
 )
+from parcels._core.basegrid import FlatMesh
 from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._core.model import UnstructuredModelData
-from parcels._core.basegrid import FlatMesh
 from parcels._datasets.unstructured.generated import sigma_coordinate_lattice_dataset
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
 from parcels.interpolators import (
