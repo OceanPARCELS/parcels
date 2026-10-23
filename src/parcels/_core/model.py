@@ -233,7 +233,7 @@ class StructuredModelData(ModelData):
     ) -> Self:
         ds = ds.copy()
         if mesh is None:
-            mesh = _get_mesh_type_from_sgrid_dataset(ds)
+            mesh = _infer_mesh_from_sgrid_data(ds)
 
         # Ensure time dimension has axis attribute if present
         if "time" in ds.dims and "time" in ds.coords:
@@ -397,6 +397,9 @@ class UnstructuredModelData(ModelData):
                 f"Dataset missing one of the required dimensions 'time', 'zf', or 'zc' for uxDataset. Found dimensions {ds_dims}"
             )
 
+        if mesh is None:
+            mesh = _infer_mesh_from_ugrid_data(ds)
+
         grid = UxGrid(ds.uxgrid, z=ds.coords["zf"], mesh=mesh)
         ds = _discover_ux_U_and_V(ds)
 
@@ -413,8 +416,12 @@ class UnstructuredModelData(ModelData):
         return model
 
 
-# TODO: Refactor later into something like `parcels._metadata.discover(dataset)` helper that can be used to discover important metadata like this. I think this whole metadata handling should be refactored into its own module.
-def _get_mesh_type_from_sgrid_dataset(ds_sgrid: xr.Dataset) -> ptyping.TMesh:
+def _infer_mesh_from_ugrid_data(ds_ugrid: ux.UxDataset) -> ptyping.TMesh | None:
+    """Small helper to inspect UxGRID metadata and dataset metadata to determine mesh type."""
+    return _infer_mesh_from_coordinates(ds_ugrid.uxgrid.node_lon, ds_ugrid.uxgrid.node_lat)
+
+
+def _infer_mesh_from_sgrid_data(ds_sgrid: xr.Dataset) -> ptyping.TMesh:
     """Small helper to inspect SGRID metadata and dataset metadata to determine mesh type."""
     sgrid_metadata = ds_sgrid.sgrid.metadata
 

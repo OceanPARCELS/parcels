@@ -240,7 +240,7 @@ def test_unstructured_model_data_rejects_z_with_different_time_coordinate():
     ds_one_day_later = sigma_coordinate_lattice_dataset(
         5, (0.0, 4e3), (0.0, 4e3), 4, SLOPING_BOTTOM_DEPTH, RISING_ETA, start_time="2000-01-02"
     )
-    grid_with_later_z = UxGrid(ds.uxgrid, z=ds_one_day_later.coords["zf"])
+    grid_with_later_z = UxGrid(ds.uxgrid, z=ds_one_day_later.coords["zf"], mesh=FlatMesh())
 
     with pytest.raises(ValueError, match="same time coordinate"):
         UnstructuredModelData(ds, grid_with_later_z, {})
