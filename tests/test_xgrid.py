@@ -349,15 +349,15 @@ def test_search_1d_array_some_out_of_bounds(search_1d, array, x, expected_xi):
         ),
     ],
 )
-def test_xgrid_localize_zero_position(ds, da_name, expected):
-    """Test localize function using left and right datasets."""
+def test_xgrid_localise_zero_position(ds, da_name, expected):
+    """Test localise function using left and right datasets."""
     fieldset = FieldSet.from_sgrid_conventions(ds)
     grid = fieldset.models[0].grid
 
     da = ds[da_name]
     position = grid.search(0, 0, 0)
 
-    local_position = grid.localize(position, da.dims)
+    local_position = grid.localise(position, da.dims)
     assert local_position.keys() == expected.keys()
     for dim, (index, bcoord) in expected.items():
         np.testing.assert_array_equal(local_position[dim]["index"], [index])

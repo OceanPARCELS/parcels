@@ -256,7 +256,7 @@ class XGrid(BaseGrid):
         assert self.sgrid_metadata.vertical_dimensions is not None
         return get_cell_count_along_dim(self._ds, self.sgrid_metadata.vertical_dimensions[0])
 
-    def localize(
+    def localise(
         self, position: dict[ptyping.XgridAxis, dict[str, np.ndarray]], dims: list[str]
     ) -> dict[str, dict[str, np.ndarray]]:
         """
@@ -291,7 +291,7 @@ class XGrid(BaseGrid):
         ...     "Z": {"index": np.array([3]), "bcoord": np.array([0.75])},
         ... }
         >>> dims = ["time", "depth", "YC", "XC"]
-        >>> grid.localize(position, dims)
+        >>> grid.localise(position, dims)
         {'depth': {'index': array([3]), 'bcoord': array([0.75])}, 'YC': {'index': array([9]), 'bcoord': array([0.75])}, 'XC': {'index': array([5]), 'bcoord': array([0.01])}}
         """
         dim_to_axis = _get_dim_to_axis_mapping(self.sgrid_metadata)
@@ -603,7 +603,7 @@ def _convert_center_pos_to_fpoint(
 ) -> dict[str, np.ndarray]:
     """Converts a physical position relative to the cell edges defined in the grid to be relative to the face center.
 
-    This is used to "localize" a position to be relative to the staggered grid at which the field is defined, so that
+    This is used to "localise" a position to be relative to the staggered grid at which the field is defined, so that
     it can be easily interpolated.
 
     This also handles different model input cell edges and centers are staggered in different directions (e.g., with NEMO and MITgcm).
