@@ -12,6 +12,7 @@ from parcels import (
     convert,
 )
 from parcels._core.model import UnstructuredModelData
+from parcels._core.basegrid import FlatMesh
 from parcels._datasets.unstructured.generated import sigma_coordinate_lattice_dataset
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
 from parcels.interpolators import (
@@ -58,7 +59,7 @@ def test_fesom2_square_delaunay_uniform_z_coordinate_eval():
     """
     ds = datasets_unstructured["fesom2_square_delaunay_uniform_z_coordinate"]
     ds = convert.fesom_to_ugrid(ds)
-    fieldset = FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     assert isinstance(fieldset.U.interp_method, UxConstantFaceConstantZC)
     assert isinstance(fieldset.V.interp_method, UxConstantFaceConstantZC)
