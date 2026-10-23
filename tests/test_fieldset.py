@@ -498,7 +498,7 @@ def _expected_time_interval(datasets):
 @settings(deadline=None, max_examples=50)
 def test_fieldset_add_varying_grid_dimensionality(datasets):
     """Models with grids of varying dimensionality (0D-4D) can be combined into one FieldSet."""
-    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    fieldsets = [FieldSet.from_sgrid_conventions(ds) for ds in datasets]
     combined = fieldsets[0]
     for fieldset in fieldsets[1:]:
         combined = combined + fieldset
@@ -537,7 +537,7 @@ def test_fieldset_add_varying_grid_dimensionality_execute(datasets):
     Models with 0D (spatially constant) grids are excluded, as sampling such fields from a
     kernel is not supported yet (issue #2054).
     """
-    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    fieldsets = [FieldSet.from_sgrid_conventions(ds) for ds in datasets]
     combined = fieldsets[0]
     for fieldset in fieldsets[1:]:
         combined = combined + fieldset
@@ -573,9 +573,7 @@ def test_fieldset_add_4d_base_and_reduced_dims_model(spatial_axes, n_times):
     base = reduced_dims_dataset(frozenset("XYZ"), (3, 0), "base_field", value=1.0)
     reduced = reduced_dims_dataset(spatial_axes, (n_times, 0), "reduced_field", value=2.0)
 
-    combined = FieldSet.from_sgrid_conventions(base, mesh="flat") + FieldSet.from_sgrid_conventions(
-        reduced, mesh="flat"
-    )
+    combined = FieldSet.from_sgrid_conventions(base) + FieldSet.from_sgrid_conventions(reduced)
 
     assert len(combined.models) == 2
     assert set(combined.fields) == {"base_field", "reduced_field"}

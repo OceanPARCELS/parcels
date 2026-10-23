@@ -418,6 +418,10 @@ def _get_mesh_type_from_sgrid_dataset(ds_sgrid: xr.Dataset) -> ptyping.TMesh:
     """Small helper to inspect SGRID metadata and dataset metadata to determine mesh type."""
     sgrid_metadata = ds_sgrid.sgrid.metadata
 
+    if sgrid_metadata.node_coordinates is None:
+        # No horizontal coordinates (e.g. 0D or Z-only grids), so there is no geometry to infer from
+        return FlatMesh()
+
     fpoint_x, fpoint_y = sgrid_metadata.node_coordinates
 
     return _infer_mesh_from_coordinates(ds_sgrid[fpoint_x], ds_sgrid[fpoint_y])
