@@ -14,7 +14,7 @@ from parcels import (
     particlefile_to_v3_zarr,
 )
 from parcels._core.index_search import _search_time_index
-from parcels._core.mesh import get_mesh
+from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._datasets.structured.generated import simple_UV_dataset
 from parcels.interpolators import (
     CGrid_Velocity,
@@ -48,11 +48,11 @@ def field():
         {"P": (["time", "depth", "lat", "lon"], temporal_data)},
         coords={
             "time": (["time"], [np.timedelta64(t, "s") for t in [0, 2, 4]], {"axis": "T"}),
-            "depth": (["depth"], [0, 1, 2, 3], {"axis": "Z"}),
-            "lat": (["lat"], [0, 1, 2, 3], {"axis": "Y"}),
-            "lon": (["lon"], [0, 1, 2, 3], {"axis": "X"}),
-            "x": (["x"], [0.5, 1.5, 2.5, 3.5], {"axis": "X"}),
-            "y": (["y"], [0.5, 1.5, 2.5, 3.5], {"axis": "Y"}),
+            "depth": (["depth"], [0, 1, 2, 3], {"axis": "Z", "units": "m"}),
+            "lat": (["lat"], [0, 1, 2, 3], {"axis": "Y", "units": "m"}),
+            "lon": (["lon"], [0, 1, 2, 3], {"axis": "X", "units": "m"}),
+            "x": (["x"], [0.5, 1.5, 2.5, 3.5], {"axis": "X", "units": "m"}),
+            "y": (["y"], [0.5, 1.5, 2.5, 3.5], {"axis": "Y", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -68,7 +68,7 @@ def field():
             vertical_dimensions=(sgrid.FaceNodePadding("ZC", "depth", sgrid.Padding.HIGH),),
         ),
     )
-    field = FieldSet.from_sgrid_conventions(ds, mesh="flat").P
+    field = FieldSet.from_sgrid_conventions(ds).P
     assert isinstance(field.interp_method, XLinear)
 
     return field
@@ -118,7 +118,7 @@ def test_raw_2d_interpolation(field, interpolator, t, z, y, x, expected):
     np.testing.assert_equal(value, expected)
 
 
-@pytest.mark.parametrize("mesh", ["flat", "spherical"])
+@pytest.mark.parametrize("mesh", [FlatMesh(), SphericalMesh()])
 @pytest.mark.parametrize(
     "func, t, z, y, x, expected",
     [
@@ -139,7 +139,7 @@ def test_raw_2d_interpolation(field, interpolator, t, z, y, x, expected):
     ],
 )
 def test_spatial_slip_interpolation(field, func, t, z, y, x, expected, mesh):
-    field.grid._mesh = get_mesh(mesh)
+    field.grid.mesh = mesh
     field.data[:] = 1.0
     field.data[:, :, 1:3, 1:3] = 0.0  # Set zero land value to test spatial slip
     U = field
@@ -148,7 +148,7 @@ def test_spatial_slip_interpolation(field, func, t, z, y, x, expected, mesh):
 
     velocities = UV[t, z, y, x]
     expected = np.array(expected)
-    if mesh == "spherical":
+    if mesh.is_spherical():
         expected[0] = expected[0] / (1852 * 60.0 * np.cos(np.radians(y)))
         expected[1] = expected[1] / (1852 * 60.0)
     np.testing.assert_array_almost_equal(velocities, expected)
@@ -186,15 +186,16 @@ def test_invdistland_interpolation(field, interpolator, t, z, y, x, expected):
     np.testing.assert_array_almost_equal(value, expected)
 
 
-@pytest.mark.parametrize("mesh", ["spherical", "flat"])
+@pytest.mark.parametrize("mesh", [SphericalMesh(), FlatMesh()])
 def test_interpolation_mesh_type(mesh, npart=10):
-    ds = simple_UV_dataset(mesh=mesh)
+    mesh_str = "spherical" if mesh.is_spherical() else "flat"
+    ds = simple_UV_dataset(mesh_str=mesh_str)
     ds["U"].data[:] = 1.0
     fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
 
     lat = 30.0
     time = 0.0
-    u_expected = 1.0 if mesh == "flat" else 1.0 / (1852 * 60 * np.cos(np.radians(lat)))
+    u_expected = 1.0 / (1852 * 60 * np.cos(np.radians(lat))) if mesh.is_spherical() else 1.0
 
     with pytest.warns(RuntimeWarning, match="Sampling of velocities should normally be done"):
         assert fieldset.U.eval(time, 0, lat, 0) == 1.0
@@ -322,13 +323,13 @@ def test_interp_regression_v3(interp_name, interp_method, tmp_zarr, tmp_parquet)
         },
         coords={
             "time": (["time"], time, {"axis": "T"}),
-            "depth": (["depth"], ds_input["depth"].values, {"axis": "Z"}),
-            "YC": (["YC"], np.arange(ydim) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
-            "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], ds_input["lat"].values, {"axis": "Y"}),
-            "lon": (["XG"], ds_input["lon"].values, {"axis": "X"}),
+            "depth": (["depth"], ds_input["depth"].values, {"axis": "Z", "units": "m"}),
+            "YC": (["YC"], np.arange(ydim) + 0.5, {"axis": "Y", "units": "m"}),
+            "YG": (["YG"], np.arange(ydim), {"axis": "Y", "units": "m"}),
+            "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X", "units": "m"}),
+            "XG": (["XG"], np.arange(xdim), {"axis": "X", "units": "m"}),
+            "lat": (["YG"], ds_input["lat"].values, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], ds_input["lon"].values, {"axis": "X", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -345,7 +346,7 @@ def test_interp_regression_v3(interp_name, interp_method, tmp_zarr, tmp_parquet)
         ),
     )
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     if interp_name in ["cgrid_velocity", "freeslip", "nearest"]:
         fieldset.UVW.interp_method = interp_method()
 

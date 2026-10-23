@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from textwrap import indent
 from typing import IO, Any, Literal, Protocol, Self, cast, overload
 
+import cf_xarray  # noqa: F401
 import xarray as xr
 
 from parcels._python import repr_from_dunder_dict
@@ -681,7 +682,15 @@ def _grid3d_to_ascii(grid: SGrid3DMetadata) -> str:
 
 
 def _attach_sgrid_metadata(ds: xr.Dataset, grid: SGrid2DMetadata | SGrid3DMetadata) -> xr.Dataset:
-    """Copies the dataset and attaches the SGRID metadata in 'grid' variable. Modifies 'conventions' attribute."""
+    """Copies the dataset and attaches the SGRID metadata in 'grid' variable. Modifies 'conventions' attribute.
+
+    Raises a ValueError if the dataset already has SGRID metadata.
+    """
+    if existing := ds.cf.cf_roles.get("grid_topology"):
+        raise ValueError(
+            f"Dataset already has SGRID metadata (variables {existing} have cf_role 'grid_topology'), "
+            "can't attach more."
+        )
     ds = ds.copy()
     ds["grid"] = (
         [],

@@ -7,22 +7,23 @@ import parcels._sgrid as sgrid
 from parcels._core.utils.time import timedelta_to_float
 
 
-def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh="spherical"):
-    max_lon = 180.0 if mesh == "spherical" else 1e6
-    max_lat = 90.0 if mesh == "spherical" else 1e6
+def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh_str="spherical"):
+    max_lon = 180.0 if mesh_str == "spherical" else 1e6
+    max_lat = 90.0 if mesh_str == "spherical" else 1e6
+    unit = "degrees" if mesh_str == "spherical" else "m"
     shape = (n_times, nz, ny, nx)
 
     return xr.Dataset(
         {"U": (["time", "depth", "YG", "XG"], np.zeros(shape)), "V": (["time", "depth", "YG", "XG"], np.zeros(shape))},
         coords={
             "time": (["time"], xr.date_range("2000", "2001", n_times), {"axis": "T"}),
-            "depth": (["depth"], np.linspace(0, maxdepth, nz), {"axis": "Z"}),
-            "YC": (["YC"], np.arange(ny) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(ny), {"axis": "Y"}),
-            "XC": (["XC"], np.arange(nx) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(nx), {"axis": "X"}),
-            "lat": (["YG"], np.linspace(-max_lat, max_lat, ny), {"axis": "Y"}),
-            "lon": (["XG"], np.linspace(-max_lon, max_lon, nx), {"axis": "X"}),
+            "depth": (["depth"], np.linspace(0, maxdepth, nz), {"axis": "Z", "units": "m"}),
+            "YC": (["YC"], np.arange(ny) + 0.5, {"axis": "Y", "units": unit}),
+            "YG": (["YG"], np.arange(ny), {"axis": "Y", "units": unit}),
+            "XC": (["XC"], np.arange(nx) + 0.5, {"axis": "X", "units": unit}),
+            "XG": (["XG"], np.arange(nx), {"axis": "X", "units": unit}),
+            "lat": (["YG"], np.linspace(-max_lat, max_lat, ny), {"axis": "Y", "units": unit}),
+            "lon": (["XG"], np.linspace(-max_lon, max_lon, nx), {"axis": "X", "units": unit}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -41,7 +42,7 @@ def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh="spherica
 
 
 def simple_UV_sigma_dataset(
-    n_times=360, nz=2, ny=30, nx=4, bottom_depth=None, eta=None, mesh="flat", start_time="2000-01-01"
+    n_times=360, nz=2, ny=30, nx=4, bottom_depth=None, eta=None, mesh_str="flat", start_time="2000-01-01"
 ):
     """simple_UV_dataset with zero U, V and W and a time-varying (4D) depth on the cell centres: nz sigma interfaces from the surface (depth -eta) to bottom_depth ((YC, XC) array, meters; None for a flat bottom at 1 m); eta is None or (time, YC, XC), hourly from start_time."""
     if bottom_depth is None:
@@ -59,13 +60,16 @@ def simple_UV_sigma_dataset(
     total_depth = bottom_depth[np.newaxis, :, :] + eta
     zf = (
         sigma[np.newaxis, :, np.newaxis, np.newaxis] * total_depth[:, np.newaxis] - eta[:, np.newaxis]
-    )  # (time, depth, YC, XC)
+    )  # (time, ZF, YC, XC)
 
-    ds = simple_UV_dataset(n_times=n_times, nz=nz, ny=ny, nx=nx, mesh=mesh)
-    ds["W"] = (["time", "depth", "YG", "XG"], np.zeros((n_times, nz, ny, nx)))
+    ds = simple_UV_dataset(n_times=n_times, nz=nz, ny=ny, nx=nx, mesh_str=mesh_str)
+    # rename original depth coordinate to ZF to avoid confusion with 4D depth coordinate
+    ds = ds.rename({"depth": "ZF"})
+    ds["grid"].attrs["vertical_dimensions"] = "ZC:ZF (padding:both)"
+    ds["W"] = (["time", "ZF", "YG", "XG"], np.zeros((n_times, nz, ny, nx)))
     return ds.assign_coords(
         time=(["time"], xr.date_range(start_time, periods=n_times, freq="1h"), {"axis": "T"}),
-        depth=(["time", "depth", "YC", "XC"], zf, {"axis": "Z"}),
+        depth=(["time", "ZF", "YC", "XC"], zf, {"axis": "Z"}),
     )
 
 
@@ -102,8 +106,8 @@ def radial_rotation_dataset(xdim=200, ydim=200):  # Define 2D flat, square field
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -146,8 +150,8 @@ def moving_eddy_dataset(xdim=2, ydim=2):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
         attrs={
             "u_0": u_0,
@@ -207,8 +211,8 @@ def decaying_moving_eddy_dataset(xdim=2, ydim=2):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) + 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
         attrs={
             "u_0": u_0,
@@ -233,7 +237,7 @@ def decaying_moving_eddy_dataset(xdim=2, ydim=2):
     )
 
 
-def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
+def peninsula_dataset(xdim=100, ydim=50, mesh_str="flat", grid_type="A"):
     """Construct a fieldset encapsulating the flow field around an idealised peninsula.
 
     Parameters
@@ -242,7 +246,7 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
         Horizontal dimension of the generated fieldset
     ydim :
         Vertical dimension of the generated fieldset
-    mesh : str
+    mesh_str : str
         String indicating the type of mesh coordinates and
         units used during velocity interpolation:
 
@@ -296,8 +300,9 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
         raise ValueError(f"Grid_type {grid_type} is not a valid option")
 
     # Convert from m to lat/lon for spherical meshes
-    lon = La / 1852.0 / 60.0 if mesh == "spherical" else La
-    lat = Wa / 1852.0 / 60.0 if mesh == "spherical" else Wa
+    lon = La / 1852.0 / 60.0 if mesh_str == "spherical" else La
+    lat = Wa / 1852.0 / 60.0 if mesh_str == "spherical" else Wa
+    unit = "m" if mesh_str == "flat" else "degree"
 
     return xr.Dataset(
         {
@@ -310,8 +315,8 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": unit}),
+            "lon": (["XG"], lon, {"axis": "X", "units": unit}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,
@@ -378,8 +383,8 @@ def stommel_gyre_dataset(xdim=200, ydim=200, grid_type="A"):
             "YG": (["YG"], np.arange(ydim), {"axis": "Y"}),
             "XC": (["XC"], np.arange(xdim) - 0.5, {"axis": "X"}),
             "XG": (["XG"], np.arange(xdim), {"axis": "X"}),
-            "lat": (["YG"], lat, {"axis": "Y"}),
-            "lon": (["XG"], lon, {"axis": "X"}),
+            "lat": (["YG"], lat, {"axis": "Y", "units": "m"}),
+            "lon": (["XG"], lon, {"axis": "X", "units": "m"}),
         },
     ).pipe(
         sgrid._attach_sgrid_metadata,

@@ -158,7 +158,7 @@ Every Kernel must be a function with the following (and only those) arguments: `
 ```
 
 ```{warning}
-We have to be careful with kernels that sample velocities on "spherical" grids (so with longitude and latitude in degrees). Parcels can automatically convert velocities from m s<sup>-1</sup> to degrees s<sup>-1</sup>, but only when using `VectorFields`. [This guide](../examples/tutorial_velocityconversion.ipynb) describes how to use velocities on a "spherical" grid in Parcels.
+We have to be careful with kernels that sample velocities on spherical grids (so with longitude and latitude in degrees). Parcels can automatically convert velocities from m s<sup>-1</sup> to degrees s<sup>-1</sup>, but only when using `VectorFields`. [This guide](../examples/tutorial_velocityconversion.ipynb) describes how to use velocities on a spherical grid in Parcels.
 ```
 
 ```{admonition} 📖 Read more about the Kernel loop
