@@ -50,7 +50,6 @@ def test_fesom_fieldset(ds_fesom_channel, fieldset_fesom_channel):
     assert (fieldset_fesom_channel.V.data == ds_fesom_channel.V).all()
 
 
-# @pytest.mark.xfail(reason="#2674 - 'p' interpolator is not being selected properly")
 def test_fesom2_square_delaunay_uniform_z_coordinate_eval():
     """
     Test the evaluation of a fieldset with a FESOM2 square Delaunay grid and uniform z-coordinate.
