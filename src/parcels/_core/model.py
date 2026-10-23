@@ -416,7 +416,7 @@ class UnstructuredModelData(ModelData):
         return model
 
 
-def _infer_mesh_from_ugrid_data(ds_ugrid: ux.UxDataset) -> ptyping.TMesh | None:
+def _infer_mesh_from_ugrid_data(ds_ugrid: ux.UxDataset) -> ptyping.TMesh:
     """Small helper to inspect UxGRID metadata and dataset metadata to determine mesh type."""
     return _infer_mesh_from_coordinates(ds_ugrid.uxgrid.node_lon, ds_ugrid.uxgrid.node_lat)
 
