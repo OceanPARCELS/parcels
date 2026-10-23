@@ -16,7 +16,11 @@ from parcels._core.model import UnstructuredModelData
 from parcels._datasets.unstructured.generated import sigma_coordinate_lattice_dataset
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
 from parcels.interpolators import (
+    UxConstantEdgeConstantZC,
+    UxConstantEdgeLinearZF,
     UxConstantFaceConstantZC,
+    UxConstantFaceLinearZF,
+    UxLinearNodeConstantZC,
     UxLinearNodeLinearZF,
 )
 from tests.utils import create_uxgrid_from_triangulation
@@ -154,6 +158,30 @@ def test_icon_evals():
     # value for interpolation is then just computed using query point locations
     # for the latitude and longitude, and the layer centers vertically.
     assert np.allclose(fieldset.p.eval(t=tq, z=zq, y=yq, x=xq), zc * (xq + yq))
+
+
+def test_from_ugrid_conventions_selects_correct_interpolator():
+    """Fields get the default interpolator that matches their vertical and lateral registration."""
+    ds = convert.icon_to_ugrid(datasets_unstructured["icon_square_delaunay_uniform_z_coordinate"].copy(deep=True))
+    expected_interpolators = {
+        ("zc", "n_face"): UxConstantFaceConstantZC,
+        ("zf", "n_face"): UxConstantFaceLinearZF,
+        ("zc", "n_node"): UxLinearNodeConstantZC,
+        ("zf", "n_node"): UxLinearNodeLinearZF,
+        ("zc", "n_edge"): UxConstantEdgeConstantZC,
+        ("zf", "n_edge"): UxConstantEdgeLinearZF,
+    }
+    for vertical_dim, lateral_dim in expected_interpolators:
+        ds[f"{lateral_dim}_{vertical_dim}"] = ux.UxDataArray(
+            np.ones((ds.sizes["time"], ds.sizes[vertical_dim], getattr(ds.uxgrid, lateral_dim))),
+            dims=["time", vertical_dim, lateral_dim],
+            coords={"time": ds.time, vertical_dim: ds[vertical_dim]},
+            uxgrid=ds.uxgrid,
+        )
+    fieldset = FieldSet.from_ugrid_conventions(ds)
+
+    for (vertical_dim, lateral_dim), expected_interpolator in expected_interpolators.items():
+        assert isinstance(getattr(fieldset, f"{lateral_dim}_{vertical_dim}").interp_method, expected_interpolator)
 
 
 _NESTEDGRIDS_NODES = np.array(
