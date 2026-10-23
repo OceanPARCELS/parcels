@@ -326,21 +326,31 @@ These are the most common problems when writing a converter, together with the e
 ## A template to start from
 
 ```python
-def mymodel_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Dataset) -> xr.Dataset:
+def mymodel_to_sgrid(
+    *, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Dataset
+) -> xr.Dataset:
     das = []
     for name, field in fields.items():
-        da = field[next(iter(field.data_vars))] if isinstance(field, xr.Dataset) else field
+        da = (
+            field[next(iter(field.data_vars))]
+            if isinstance(field, xr.Dataset)
+            else field
+        )
         das.append(da.rename(name))
 
-    ds = xr.merge([*das, coords[["<x_node_coord>", "<y_node_coord>", "<z_node_coord>"]]])
+    ds = xr.merge(
+        [*das, coords[["<x_node_coord>", "<y_node_coord>", "<z_node_coord>"]]]
+    )
     ds.attrs.clear()
 
-    ds = ds.rename({
-        "<time_dim>": "time",
-        "<x_node_coord>": "lon",
-        "<y_node_coord>": "lat",
-        "<z_node_coord>": "depth",
-    })
+    ds = ds.rename(
+        {
+            "<time_dim>": "time",
+            "<x_node_coord>": "lon",
+            "<y_node_coord>": "lat",
+            "<z_node_coord>": "depth",
+        }
+    )
     ds = ds.set_coords(["lon", "lat", "depth"])
 
     # Model-specific fixes go here, e.g. sign of W, depth direction, time decoding, units

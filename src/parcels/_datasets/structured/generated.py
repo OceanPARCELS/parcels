@@ -60,13 +60,16 @@ def simple_UV_sigma_dataset(
     total_depth = bottom_depth[np.newaxis, :, :] + eta
     zf = (
         sigma[np.newaxis, :, np.newaxis, np.newaxis] * total_depth[:, np.newaxis] - eta[:, np.newaxis]
-    )  # (time, depth, YC, XC)
+    )  # (time, ZF, YC, XC)
 
     ds = simple_UV_dataset(n_times=n_times, nz=nz, ny=ny, nx=nx, mesh=mesh)
-    ds["W"] = (["time", "depth", "YG", "XG"], np.zeros((n_times, nz, ny, nx)))
+    # rename original depth coordinate to ZF to avoid confusion with 4D depth coordinate
+    ds = ds.rename({"depth": "ZF"})
+    ds["grid"].attrs["vertical_dimensions"] = "ZC:ZF (padding:both)"
+    ds["W"] = (["time", "ZF", "YG", "XG"], np.zeros((n_times, nz, ny, nx)))
     return ds.assign_coords(
         time=(["time"], xr.date_range(start_time, periods=n_times, freq="1h"), {"axis": "T"}),
-        depth=(["time", "depth", "YC", "XC"], zf, {"axis": "Z"}),
+        depth=(["time", "ZF", "YC", "XC"], zf, {"axis": "Z"}),
     )
 
 
