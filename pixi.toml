@@ -65,6 +65,9 @@ python = "3.11.*"
 [feature.py313.dependencies]
 python = "3.13.*"
 
+[feature.py315.dependencies]
+python = "3.15.*"
+
 [feature.test.dependencies]
 nbval = "*"
 pytest = "*"
@@ -186,6 +189,7 @@ test = { features = [
 test-min-versions = { features = ["test", "min-versions"] }
 test-py311 = { features = ["test", "py311"] }
 test-py313 = { features = ["test", "py313"] }
+test-py315 = { features = ["test", "py315"] }
 test-notebooks = { features = ["test", "notebooks"], solve-group = "main" }
 docs = { features = ["docs", "notebooks"], solve-group = "docs" }
 typing = { features = ["typing"], solve-group = "main" }

@@ -78,6 +78,8 @@ jobs:
           - os: ubuntu
             pixi-environment: "test-py313"
           - os: ubuntu
+            pixi-environment: "test-py315"
+          - os: ubuntu
             pixi-environment: "test-min-versions"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
