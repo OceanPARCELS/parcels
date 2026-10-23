@@ -458,6 +458,8 @@ def _ux_constant_flow_face_centered_2D():
         },
         uxgrid=uxgrid,
     )
+    ds.uxgrid.node_lon.attrs["units"] = "m"
+    ds.uxgrid.node_lat.attrs["units"] = "m"
     return ds
 
 

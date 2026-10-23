@@ -12,7 +12,7 @@ import parcels._sgrid as sgrid
 import parcels._typing as ptyping
 from parcels._core.basegrid import BaseGrid
 from parcels._core.index_search import _search_1d_array, _search_1d_columns, _search_indices_curvilinear_2d
-from parcels._core.mesh import SphericalMesh, get_mesh
+from parcels._core.mesh import BaseMesh
 from parcels._core.warnings import FieldSetWarning
 from parcels._sgrid.accessor import _get_dim_to_axis_mapping, get_dim_position
 from parcels.interpolators._xinterpolators import _get_offsets_dictionary
@@ -120,10 +120,12 @@ class XGrid(BaseGrid):
 
     """
 
-    def __init__(self, model_data: xr.Dataset, mesh: Literal["flat", "spherical"] | SphericalMesh):
+    def __init__(self, model_data: xr.Dataset, mesh: ptyping.TMesh):
+        if not isinstance(mesh, BaseMesh):
+            raise TypeError(f"mesh must be a FlatMesh or SphericalMesh object. Got {mesh=!r}")
         self.sgrid_metadata = model_data.sgrid.metadata
         self._ds = model_data
-        self._mesh = get_mesh(mesh)
+        self.mesh = mesh
         self._spatialhash = None
         ds = model_data
 
@@ -225,8 +227,8 @@ class XGrid(BaseGrid):
     @property
     def deg2m(self) -> float:
         """Metres per degree of arc for this grid's mesh."""
-        if self._mesh.is_spherical():
-            return self._mesh.deg2m
+        if self.mesh.is_spherical():
+            return self.mesh.deg2m
         return 1.0
 
     @cached_property
@@ -283,9 +285,8 @@ class XGrid(BaseGrid):
 
         Example
         -------
-        >>> position = {'X': (5, 0.51), 'Y': (
-            10, 0.25), 'Z': (3, 0.75)}
-        >>> dims = ['time', 'depth', 'YC', 'XC']
+        >>> position = {"X": (5, 0.51), "Y": (10, 0.25), "Z": (3, 0.75)}
+        >>> dims = ["time", "depth", "YC", "XC"]
         >>> grid.localize(position, dims)
         {'depth': (3, 0.75), 'YC': (9, 0.75), 'XC': (5, 0.01)}
         """
@@ -441,7 +442,7 @@ class XGrid(BaseGrid):
 
         Examples
         --------
-        >>> grid.get_axis_dim_mapping(['time', 'lat', 'lon'])
+        >>> grid.get_axis_dim_mapping(["time", "lat", "lon"])
         {'Y': 'lat', 'X': 'lon'}
 
         Notes

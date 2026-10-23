@@ -31,7 +31,10 @@ repos:
     rev: v3.9.10
     hooks:
       - id: prettier
-
+  - repo: https://github.com/keewis/blackdoc
+    rev: v0.4.6
+    hooks:
+      - id: blackdoc
   - repo: https://github.com/kynan/nbstripout
     rev: 0.9.1
     hooks:

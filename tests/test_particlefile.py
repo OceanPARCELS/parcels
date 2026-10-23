@@ -72,7 +72,7 @@ def test_compression(fieldset, tmp_parquet, compression):
 def test_write_fieldset_without_time(tmp_parquet):
     ds = peninsula_dataset()  # DataSet without time
     assert "time" not in ds.dims
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     pset = ParticleSet(fieldset, pclass=Particle, x=0, y=0)
 
@@ -475,12 +475,6 @@ def test_particlefile_init_invalid(tmp_path):
         ParticleFile(path, outputdt=np.timedelta64(1, "s"))
 
 
-def test_pfile_write_custom_particle():
-    # Test the writing of a custom particle with variables that are to_write, some to_write once, and some not to_write
-    # ? This is more of an integration test... Should it be housed here?
-    ...
-
-
 def test_particlefile_readable_after_kernel_error(fieldset, tmp_parquet):
     """Parquet output file must be readable even if the kernel raises an error mid-execution (GH-2713)."""
 
@@ -496,32 +490,6 @@ def test_particlefile_readable_after_kernel_error(fieldset, tmp_parquet):
     # File must be readable despite the crash
     df = pd.read_parquet(tmp_parquet)
     assert len(df) >= 1  # at least the initial condition was written
-
-
-@pytest.mark.xfail(
-    reason="set_variable_write_status should be removed - with Particle writing defined on the particle level. GH2186"
-)
-def test_pfile_set_towrite_False(fieldset, tmp_parquet):
-    npart = 10
-    pset = ParticleSet(fieldset, pclass=Particle, x=np.linspace(0, 1, npart), y=0.5 * np.ones(npart))
-    pset.set_variable_write_status("z", False)
-    pset.set_variable_write_status("lat", False)
-    pfile = pset.ParticleFile(tmp_parquet, outputdt=1)
-
-    def Update_lon(particles, fieldset):  # pragma: no cover
-        particles.dx += 0.1
-
-    pset.execute(Update_lon, runtime=10, output_file=pfile)
-
-    ds = xr.open_zarr(tmp_parquet)
-    assert "t" in ds
-    assert "z" not in ds
-    assert "lat" not in ds
-    ds.close()
-
-    # For pytest purposes, we need to reset to original status
-    pset.set_variable_write_status("z", True)
-    pset.set_variable_write_status("lat", True)
 
 
 @pytest.mark.parametrize(

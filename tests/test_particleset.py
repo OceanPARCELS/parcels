@@ -193,9 +193,9 @@ def test_pset_iterator(fieldset):
     ],
 )
 def test_pset_default_z_is_in_domain(depths):
-    ds = simple_UV_dataset(n_times=1, nz=len(depths), ny=10, nx=10, mesh="flat")
+    ds = simple_UV_dataset(n_times=1, nz=len(depths), ny=10, nx=10, mesh_str="flat")
     ds = ds.assign_coords(depth=depths)
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     pset = ParticleSet(fieldset, x=[0], y=[0])
     expected_z = depths[np.argmin(np.abs(depths))]
@@ -211,9 +211,9 @@ def test_pset_default_z_is_in_domain(depths):
     ],
 )
 def test_pset_default_z_closest_to_zero(depths):
-    ds = simple_UV_dataset(n_times=1, nz=len(depths), ny=10, nx=10, mesh="flat")
+    ds = simple_UV_dataset(n_times=1, nz=len(depths), ny=10, nx=10, mesh_str="flat")
     ds = ds.assign_coords(depth=depths)
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     pset = ParticleSet(fieldset, x=[0], y=[0])
     expected_z = depths[np.argmin(np.abs(depths))]

@@ -9,7 +9,7 @@ from dask import is_dask_collection
 
 from parcels._core.basegrid import BaseGrid
 from parcels._core.index_search import GRID_SEARCH_ERROR, _search_1d_array, _search_1d_columns, uxgrid_point_in_cell
-from parcels._core.mesh import SphericalMesh, get_mesh
+from parcels._core.mesh import BaseMesh, TMesh
 from parcels._core.warnings import FieldSetWarning
 
 if TYPE_CHECKING:
@@ -24,9 +24,7 @@ class UxGrid(BaseGrid):
     for interpolation on unstructured grids.
     """
 
-    def __init__(
-        self, grid: ux.grid.Grid, z: ux.UxDataArray, mesh: Literal["flat", "spherical"] | SphericalMesh
-    ) -> None:
+    def __init__(self, grid: ux.grid.Grid, z: ux.UxDataArray, mesh: TMesh) -> None:
         """
         Initializes the UxGrid with a uxarray grid and vertical coordinate array.
 
@@ -38,9 +36,11 @@ class UxGrid(BaseGrid):
             Vertical coordinates (depths) of the layer interface heights (not the mid-layer depths). Either a 1D array,
             constant in time and space (flat bottom topography, no moving vertical grid), or a 3D array with dims
             ("time", "zf", "n_node"), varying in time and across the mesh nodes.
-        mesh : str
-            The type of mesh used for the grid. Either "flat" or "spherical".
+        mesh : FlatMesh or SphericalMesh
+            The mesh of the grid, e.g. ``FlatMesh()`` or ``SphericalMesh(radius=...)``.
         """
+        if not isinstance(mesh, BaseMesh):
+            raise TypeError(f"mesh must be a FlatMesh or SphericalMesh object. Got {mesh=!r}")
         import uxarray as ux
 
         if grid.n_max_face_nodes > 3:
@@ -63,7 +63,7 @@ class UxGrid(BaseGrid):
                 stacklevel=4,
             )
         self.z = z
-        self._mesh = get_mesh(mesh)
+        self.mesh = mesh
         self._spatialhash = None
         if is_dask_collection(self.uxgrid.face_node_connectivity.data):
             self.uxgrid.face_node_connectivity.load()
@@ -100,8 +100,8 @@ class UxGrid(BaseGrid):
     @property
     def deg2m(self) -> float:
         """Metres per arcdegree for this grid's mesh."""
-        if self._mesh.is_spherical():
-            return self._mesh.deg2m
+        if self.mesh.is_spherical():
+            return self.mesh.deg2m
         return 1.0
 
     def search(self, z, y, x, ei=None, ti=None, tau=None, tol=1e-6):

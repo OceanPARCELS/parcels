@@ -344,10 +344,10 @@ Remove the <code>chunks</code> argument from your code
 <hr class="migration-divider" />
 
 <div class="migration-bubble migration-change">
-<code>ParticleFile</code> does not have a <code>to_write</code> argument
+<code>ParticleFile</code> does not have a <code>to_write="once"</code> argument
 </div>
 <div class="migration-bubble migration-how">
-Remove the <code>to_write</code> argument from your code
+Either write all timesteps of a variable, or none
 </div>
 <hr class="migration-divider" />
 
@@ -421,7 +421,7 @@ Change <code>fieldset.gridset.grids[0]</code> to <code>fieldset.gridset[0]</code
 The <code>UnitConverter</code> class is removed
 </div>
 <div class="migration-bubble migration-how">
-Remove any <code>UnitConverter</code> usage from your code and Interpolation functions should handle unit conversion internally, based on the value of <code>grid._mesh</code> (<code>"spherical"</code> or <code>"flat"</code>)
+Remove any <code>UnitConverter</code> usage from your code and Interpolation functions should handle unit conversion internally, based on the units of the coordinate values in the Dataset, or the value of <code>SphericalMesh(radius=...)"</code>.
 </div>
 <hr class="migration-divider" />
 

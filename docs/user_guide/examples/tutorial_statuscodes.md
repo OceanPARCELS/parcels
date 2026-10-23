@@ -63,14 +63,14 @@ Let's add the `KeepInOcean` Kernel to an particle simulation where particles mov
 import numpy as np
 from parcels._datasets.structured.generated import simple_UV_dataset
 
-ds = simple_UV_dataset(n_times=1, nz=2, ny=5, nx=4, mesh="flat")
+ds = simple_UV_dataset(n_times=1, nz=2, ny=5, nx=4, mesh_str="flat")
 
 dx, dy = 1.0 / len(ds.XG), 1.0 / len(ds.YG)
 
 # Add W velocity that pushes through surface
 ds["W"] = ds["U"] - 0.1 # 0.1 m/s towards the surface
 
-fieldset = parcels.FieldSet.from_sgrid_conventions(ds, mesh="flat")
+fieldset = parcels.FieldSet.from_sgrid_conventions(ds)
 fieldset.add_context("surface", 0)  # surface is at z=0
 ```
 

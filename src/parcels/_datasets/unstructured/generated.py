@@ -400,4 +400,7 @@ def sigma_coordinate_lattice_dataset(nx, x_range, y_range, nz, bottom_depth, eta
     velocity_attrs = dict(units="m/s", location="node", mesh="triangulated_lattice", Conventions="UGRID-1.0")
     velocities = {name: (velocity_dims, np.zeros(velocity_shape), velocity_attrs) for name in ("U", "V", "W")}
 
-    return ux.UxDataset(xr.Dataset(velocities, coords={"time": time, **vertical_coords}), uxgrid=uxgrid)
+    ds = ux.UxDataset(xr.Dataset(velocities, coords={"time": time, **vertical_coords}), uxgrid=uxgrid)
+    ds.uxgrid.node_lon.attrs["units"] = "m"
+    ds.uxgrid.node_lat.attrs["units"] = "m"
+    return ds

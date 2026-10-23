@@ -351,18 +351,6 @@ class ParticleSet:
         """
         return int(np.sum(self._data["state"] != StatusCode.Success))
 
-    def set_variable_write_status(self, var, write_status):
-        """Method to set the write status of a Variable.
-
-        Parameters
-        ----------
-        var :
-            Name of the variable (string)
-        write_status :
-            Write status of the variable (True, False or 'once')
-        """
-        self._data[var].set_variable_write_status(write_status)
-
     def execute(
         self,
         kernels,
@@ -411,7 +399,7 @@ class ParticleSet:
         self._kernel = Kernel(kernels, self)
 
         if output_file is not None:
-            output_file.set_metadata(self.fieldset.gridset[0]._mesh)
+            output_file.set_metadata(self.fieldset.gridset[0].mesh)
             output_file.set_time_interval(self.fieldset.time_interval)
             output_file.metadata["parcels_kernels"] = self._kernel.funcname
 

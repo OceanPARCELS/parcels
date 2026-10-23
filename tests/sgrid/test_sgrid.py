@@ -271,6 +271,23 @@ def test_rename(grid):
     assert grid == grid_new.rename(dims_dict_inv)
 
 
+def test_attach_sgrid_metadata():
+    grid = create_example_grid2dmetadata(with_vertical_dimensions=False, with_node_coordinates=False)
+    ds = xr.Dataset(attrs={"title": "example"})
+    ds_out = sgrid._attach_sgrid_metadata(ds, grid)
+
+    assert ds_out["grid"].attrs == grid.to_attrs()
+    assert ds_out.attrs["Conventions"] == "SGRID"
+    assert "grid" not in ds  # input is not modified
+
+
+def test_attach_sgrid_metadata_raises_on_existing_metadata():
+    grid = create_example_grid2dmetadata(with_vertical_dimensions=False, with_node_coordinates=False)
+    ds = sgrid._attach_sgrid_metadata(xr.Dataset(), grid).rename_vars(grid="other_grid")
+    with pytest.raises(ValueError, match=r"Dataset already has SGRID metadata \(variables \['other_grid'\]"):
+        sgrid._attach_sgrid_metadata(ds, grid)
+
+
 def test_rename_errors():
     # Test various error modes of rename_dims
     grid = grid2dmetadata

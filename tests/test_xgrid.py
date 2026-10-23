@@ -14,6 +14,7 @@ from parcels._core.index_search import (
     _search_1d_array,
     _search_1d_columns,
 )
+from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._core.utils.time import timedelta_to_float
 from parcels._core.xgrid import (
     XGrid,
@@ -64,7 +65,7 @@ def test_xgrid_repr(fieldset):
 
 @pytest.mark.parametrize("ds, attr, expected", test_cases)
 def test_xgrid_properties_ground_truth(ds, attr, expected):
-    grid = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g.grid
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
     actual = getattr(grid, attr)
     assert_equal(actual, expected)
 
@@ -74,10 +75,14 @@ def test_xgrid_axes(fieldset):
 
 
 @pytest.mark.parametrize("ds", [datasets["ds_2d_left"]])
-@pytest.mark.parametrize("mesh", ["flat", "spherical"])
-def test_uxgrid_mesh(ds, mesh):
-    grid = FieldSet.from_sgrid_conventions(ds, mesh=mesh).data_g.grid
-    assert mesh in grid._mesh.__class__.__name__.lower()
+@pytest.mark.parametrize("mesh", [FlatMesh, SphericalMesh])
+def test_xgrid_mesh_inferred_from_units(ds, mesh):
+    ds = ds.copy(deep=True)
+    if mesh is SphericalMesh:
+        ds["lon"].attrs["units"] = "degrees_east"
+        ds["lat"].attrs["units"] = "degrees_north"
+    grid = FieldSet.from_sgrid_conventions(ds).data_g.grid
+    assert isinstance(grid.mesh, mesh)
 
 
 @pytest.mark.skip(
@@ -86,7 +91,7 @@ def test_uxgrid_mesh(ds, mesh):
 @pytest.mark.parametrize("ds", [datasets["ds_2d_left"]])
 def test_transpose_xfield_data_to_tzyx(ds):
     da = ds["data_g"]
-    grid = XGrid.from_dataset(ds, mesh="flat")
+    grid = XGrid.from_dataset(ds)
 
     all_combinations = (itertools.combinations(da.dims, n) for n in range(len(da.dims)))
     all_combinations = itertools.chain(*all_combinations)
@@ -121,7 +126,7 @@ def test_invalid_lon_lat():
         ValueError,
         match=r".*is defined on the center of the grid, but must be defined on the F points\.",
     ):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
     ds = datasets["ds_2d_left"].copy()
     ds["lon"], _ = xr.broadcast(ds["YG"], ds["XG"])
@@ -129,7 +134,7 @@ def test_invalid_lon_lat():
         ValueError,
         match=r".*have different dimensionalities\.",
     ):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
     ds = datasets["ds_2d_left"].copy()
     ds["lon"], ds["lat"] = xr.broadcast(ds["YG"], ds["XG"])
@@ -139,7 +144,7 @@ def test_invalid_lon_lat():
         ValueError,
         match=r".*must be defined on the X and Y axes and transposed to have dimensions in order of Y, X\.",
     ):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
 
 @pytest.mark.skip(
@@ -150,7 +155,7 @@ def test_invalid_depth():
     ds = ds.reindex({"ZG": ds.ZG[::-1]})
 
     with pytest.raises(ValueError, match="Depth DataArray .* must be strictly increasing*"):
-        XGrid.from_dataset(ds, mesh="flat")
+        XGrid.from_dataset(ds)
 
 
 @pytest.mark.skip(
@@ -189,7 +194,7 @@ def test_vertical1D_field(ds):
     ds["z1d"] = xr.DataArray(np.linspace(0, 10, ds["depth"].size), dims=("ZG",))
     ds = ds.reset_coords("z1d")
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     field = fieldset.z1d
 
     np.testing.assert_almost_equal(field.eval(np.timedelta64(0, "s"), 0.45, 0, 0), np.array([4.5]))
@@ -200,7 +205,7 @@ def test_time1D_field():
     ds["data_g"] = (["time"], np.arange(0, ds["time"].size))
     ds["time"] = xr.date_range("2000-01-01", "2000-01-13")
 
-    field = FieldSet.from_sgrid_conventions(ds, mesh="flat").data_g
+    field = FieldSet.from_sgrid_conventions(ds).data_g
     time = timedelta_to_float(np.datetime64("2000-01-10T12:00:00") - field.time_interval.left)
     assert field.eval(time, -20, 5, 6) == 9.5
 
@@ -213,7 +218,7 @@ def test_time1D_field():
     ],
 )  # for key, ds in datasets.items()])
 def test_xgrid_search_cpoints(ds):
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     grid = fieldset.U_A_grid.grid
     lat_array, lon_array = get_2d_fpoint_mesh(grid)
     lat_array, lon_array = corner_to_cell_center_points(lat_array, lon_array)
@@ -347,7 +352,7 @@ def test_search_1d_array_some_out_of_bounds(search_1d, array, x, expected_xi):
 )
 def test_xgrid_localize_zero_position(ds, da_name, expected):
     """Test localize function using left and right datasets."""
-    grid = XGrid.from_dataset(ds, mesh="flat")
+    grid = XGrid.from_dataset(ds)
     da = ds[da_name]
     position = grid.search(0, 0, 0)
 

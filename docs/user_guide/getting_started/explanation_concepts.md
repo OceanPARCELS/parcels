@@ -47,7 +47,9 @@ In some cases, we might want to combine fields from different sources in the sam
 ds_fields2 = xr.open_dataset("insert_stokes_data_files.nc")
 fields2 = {"Ustokes": ds_fields2["ustokes"], "Vstokes": ds_fields2["vstokes"]}
 ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields2)
-fieldset += parcels.FieldSet.from_sgrid_conventions(ds_fset, vector_fields={"UVstokes": ["Ustokes", "Vstokes"]})
+fieldset += parcels.FieldSet.from_sgrid_conventions(
+    ds_fset, vector_fields={"UVstokes": ["Ustokes", "Vstokes"]}
+)
 ```
 
 ### Grid
@@ -90,7 +92,9 @@ y = np.array([0])
 x = np.array([0])
 
 # Create a ParticleSet
-pset = parcels.ParticleSet(fieldset=fieldset, pclass=parcels.Particle, t=t, z=z, y=y, x=x)
+pset = parcels.ParticleSet(
+    fieldset=fieldset, pclass=parcels.Particle, t=t, z=z, y=y, x=x
+)
 ```
 
 ```{admonition} 🖥️ Learn more about how to create ParticleSets
@@ -119,7 +123,7 @@ In Parcels, we can write a kernel function which integrates this equation at eac
 @parcels.validate_kernel
 def AdvectionEE(particles, fieldset):
     """Advection of particles using Explicit Euler (aka Euler Forward) integration."""
-    (u1, v1) = fieldset.UV[particles]
+    u1, v1 = fieldset.UV[particles]
     particles.dx += u1 * particles.dt
     particles.dy += v1 * particles.dt
 ```
@@ -137,13 +141,13 @@ We can write custom kernels to add many different types of 'behaviour' to the pa
 
 ```python
 # Create a custom Particle object with an "age" variable
-CustomParticle =  parcels.Particle.add_variable(
-    parcels.Variable("age", initial=0)
-)
+CustomParticle = parcels.Particle.add_variable(parcels.Variable("age", initial=0))
+
 
 # Create a custom kernel which keeps track of the particle age
 def Age(particles, fieldset):
     particles.age += particles.dt
+
 
 # define all kernels to be executed on particles using an (ordered) list
 kernels = [Age, parcels.kernels.AdvectionRK2]
@@ -154,7 +158,7 @@ Every Kernel must be a function with the following (and only those) arguments: `
 ```
 
 ```{warning}
-We have to be careful with kernels that sample velocities on "spherical" grids (so with longitude and latitude in degrees). Parcels can automatically convert velocities from m s<sup>-1</sup> to degrees s<sup>-1</sup>, but only when using `VectorFields`. [This guide](../examples/tutorial_velocityconversion.ipynb) describes how to use velocities on a "spherical" grid in Parcels.
+We have to be careful with kernels that sample velocities on spherical grids (so with longitude and latitude in degrees). Parcels can automatically convert velocities from m s<sup>-1</sup> to degrees s<sup>-1</sup>, but only when using `VectorFields`. [This guide](../examples/tutorial_velocityconversion.ipynb) describes how to use velocities on a spherical grid in Parcels.
 ```
 
 ```{admonition} 📖 Read more about the Kernel loop

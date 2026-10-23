@@ -15,11 +15,7 @@ particles.temperature = fieldset.temperature[particles]
 The statement above is shorthand for
 ```python
 particles.temperature = fieldset.temperature[
-    particles.t,
-    particles.z,
-    particles.y,
-    particles.x,
-    particles
+    particles.t, particles.z, particles.y, particles.x, particles
 ]
 ```
 where the `particles` argument at the end provides the grid search algorithm with a first guess for the element indices to interpolate on.
@@ -54,8 +50,7 @@ def interp(
     particle_positions: dict[str, float | np.ndarray],
     grid_positions: dict[ptyping.XgridAxis, dict[str, int | float | np.ndarray]],
     field: Field,
-):
-    ...
+): ...
 ```
 
 The `particle_positions` dictionary contains:
@@ -83,7 +78,7 @@ For unstructured (`UX`) grids, the same dictionary is defined as:
 grid_positions = {
     "T": {"index": ti, "bcoord": tau},
     "Z": {"index": zi, "bcoord": zeta},
-    "FACE": {"index": fi, "bcoord": bcoord}
+    "FACE": {"index": fi, "bcoord": bcoord},
 }
 ```
 

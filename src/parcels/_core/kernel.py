@@ -140,7 +140,7 @@ class Kernel:
                         stacklevel=2,
                     )
                     self.fieldset.add_context("RK45_tol", 10)
-                if self.fieldset.U.grid._mesh.is_spherical():
+                if self.fieldset.U.grid.mesh.is_spherical():
                     self.fieldset.context["RK45_tol"] = self.fieldset.RK45_tol / self.fieldset.U.grid.deg2m
                 if not hasattr(self.fieldset, "RK45_min_dt"):
                     warnings.warn(
