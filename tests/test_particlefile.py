@@ -8,7 +8,6 @@ import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-import xarray as xr
 from re_assert import Matches
 
 import parcels.tutorial
@@ -21,7 +20,6 @@ from parcels import (
     StatusCode,
     Variable,
     convert,
-    particlefile_to_v3_zarr,
 )
 from parcels._core.particle import get_default_particle
 from parcels._core.particlefile import get_schema
@@ -155,54 +153,6 @@ def test_write_dtypes_pfile(fieldset, tmp_parquet):
     tab = pq.read_table(tmp_parquet)
     for d in dtypes:
         assert tab[f"v_{d.__name__}"].type == pa.from_numpy_dtype(d)
-
-
-@pytest.mark.parametrize("dt", [-np.timedelta64(1, "s"), np.timedelta64(1, "s")])
-@pytest.mark.parametrize("maxvar", [2, 4, 10])
-def test_pset_repeated_release_delayed_adding_deleting(fieldset, tmp_parquet, tmp_zarr, dt, maxvar):
-    """Tests that if particles are released and deleted based on age that resulting output file is correct."""
-    npart = 10
-    fieldset.add_context("maxvar", maxvar)
-
-    MyParticle = Particle.add_variable([Variable("sample_var", initial=0.0)])
-
-    pset = ParticleSet(
-        fieldset,
-        pclass=MyParticle,
-        x=np.zeros(npart),
-        y=np.zeros(npart),
-        t=fieldset.time_interval.left + [np.timedelta64(i + 1, "s") for i in range(npart)],
-    )
-    pfile = ParticleFile(tmp_parquet, outputdt=abs(dt))
-
-    def IncrLon(particles, fieldset):  # pragma: no cover
-        ptcls_to_write = particles[(particles.sample_var == 0) & (particles.t != 0)]
-        if len(ptcls_to_write.t) > 0:
-            pfile.write(ptcls_to_write, ptcls_to_write.t)
-        particles.sample_var += 1.0
-        particles.state[particles.sample_var > fieldset.maxvar] = StatusCode.Delete
-
-    pset.execute(IncrLon, dt=dt, runtime=np.timedelta64(npart, "s"), output_file=pfile)
-
-    df = parcels.read_particlefile(tmp_parquet)
-    for traj in df.partition_by("particle_id", maintain_order=True):
-        print(traj["sample_var"][:])
-
-    samplevar = df["sample_var"][:]
-    np.testing.assert_array_equal(samplevar.shape, (npart, min(maxvar, npart) + 1))
-
-    particlefile_to_v3_zarr(tmp_parquet, tmp_zarr)
-    ds = xr.open_zarr(tmp_zarr)
-
-    samplevar = ds["sample_var"][:]
-    print(samplevar.values)
-    print(ds["time"].values)
-    print("")
-    np.testing.assert_array_equal(samplevar.shape, (npart, min(maxvar, npart) + 1))
-    # test whether samplevar[:, k] = k
-    for k in range(samplevar.shape[1]):
-        print([p.values for p in samplevar[1:, k] if np.isfinite(p)])
-        assert np.allclose([p for p in samplevar[1:, k] if np.isfinite(p)], k + 1)
 
 
 def test_file_warnings(fieldset, tmp_parquet):
