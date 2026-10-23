@@ -16,16 +16,16 @@ from parcels.kernels import AdvectionDiffusionEM, AdvectionDiffusionM1, Diffusio
 from tests.utils import create_fieldset_zeros_conversion
 
 
-@pytest.mark.parametrize("mesh", ["spherical", "flat"])
-def test_fieldKh_Brownian(mesh):
+@pytest.mark.parametrize("mesh_str", ["spherical", "flat"])
+def test_fieldKh_Brownian(mesh_str):
     kh_zonal = 100
     kh_meridional = 50
-    mesh_conversion = 1 / 1852.0 / 60 if mesh == "spherical" else 1
+    mesh_conversion = 1 / 1852.0 / 60 if mesh_str == "spherical" else 1
 
-    ds = simple_UV_dataset(n_times=2, nz=1, ny=2, nx=2, mesh=mesh)
+    ds = simple_UV_dataset(n_times=2, nz=1, ny=2, nx=2, mesh_str=mesh_str)
     ds["lon"].data = np.array([-1e6, 1e6])
     ds["lat"].data = np.array([-1e6, 1e6])
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     fieldset.add_constant_field("Kh_zonal", kh_zonal)
     fieldset.add_constant_field("Kh_meridional", kh_meridional)
 
@@ -46,14 +46,14 @@ def test_fieldKh_Brownian(mesh):
     np.testing.assert_allclose(np.mean(pset.y), 0, atol=tol)
 
 
-@pytest.mark.parametrize("mesh", ["spherical", "flat"])
+@pytest.mark.parametrize("mesh_str", ["spherical", "flat"])
 @pytest.mark.parametrize("kernel", [AdvectionDiffusionM1, AdvectionDiffusionEM])
-def test_fieldKh_SpatiallyVaryingDiffusion(mesh, kernel):
+def test_fieldKh_SpatiallyVaryingDiffusion(mesh_str, kernel):
     """Test advection-diffusion kernels on a non-uniform diffusivity field with a linear gradient in one direction."""
     ydim, xdim = 100, 200
 
-    mesh_conversion = 1 / 1852.0 / 60 if mesh == "spherical" else 1
-    ds = simple_UV_dataset(n_times=2, nz=1, ny=ydim, nx=xdim, mesh=mesh)
+    mesh_conversion = 1 / 1852.0 / 60 if mesh_str == "spherical" else 1
+    ds = simple_UV_dataset(n_times=2, nz=1, ny=ydim, nx=xdim, mesh_str=mesh_str)
     ds["lon"].data = np.linspace(-1e6, 1e6, xdim)
     ds["lat"].data = np.linspace(-1e6, 1e6, ydim)
 
@@ -63,7 +63,7 @@ def test_fieldKh_SpatiallyVaryingDiffusion(mesh, kernel):
 
     ds["Kh_zonal"] = (["time", "depth", "YG", "XG"], np.full((2, 1, ydim, xdim), Kh))
     ds["Kh_meridional"] = (["time", "depth", "YG", "XG"], np.full((2, 1, ydim, xdim), Kh))
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     fieldset.add_context("dres", float(ds["lon"][1] - ds["lon"][0]))
 
     npart = 10000

@@ -191,7 +191,10 @@ def test_convert_copernicusmarine_nodepth(caplog):
     ds = ds.isel(depth=0).drop_vars("depth")
     ds_fset = convert.copernicusmarine_to_sgrid(fields={"uo": ds["uo"]})
     FieldSet.from_sgrid_conventions(ds_fset)
-    assert "No depth dimension found in dataset. Added a singleton depth dimension." in caplog.text
+    assert (
+        "No depth dimension found in dataset. Assuming surface data and adding a singleton depth dimension."
+        in caplog.text
+    )
 
 
 def test_convert_fesom_to_ugrid():
@@ -204,6 +207,63 @@ def test_convert_fesom_to_ugrid():
     FieldSet.from_ugrid_conventions(uxds)
 
 
+@pytest.mark.parametrize("converter", ["copernicusmarine_to_sgrid", "nemo_to_sgrid"])
+def test_convert_does_not_modify_input_w(converter):
+    if converter == "copernicusmarine_to_sgrid":
+        ds = datasets_circulation_models["ds_copernicusmarine"].copy(deep=True)
+        W = 0.5 * ds["uo"]
+        kwargs = dict(fields={"U": ds["uo"], "V": ds["vo"], "W": W})
+    else:
+        U, V, W, coords = (
+            parcels.tutorial.open_dataset(f"NemoNorthSeaORCA025-N006_data/{name}")
+            for name in ("U", "V", "W", "mesh_mask")
+        )
+        W = W["wo"].load()
+        kwargs = dict(fields={"U": U["uo"], "V": V["vo"], "W": W}, coords=coords)
+    W_before = W.copy(deep=True)
+
+    getattr(convert, converter)(**kwargs)
+
+    xr.testing.assert_identical(W, W_before)
+
+
+def test_convert_raises_on_existing_grid_metadata():
+    ds = datasets_circulation_models["ds_copernicusmarine"]
+    coords = ds[["time", "depth", "latitude", "longitude"]]
+    coords["some_grid"] = xr.DataArray(0, attrs={"cf_role": "grid_topology"})
+    with pytest.raises(ValueError, match="Dataset already has SGRID metadata"):
+        convert.copernicusmarine_to_sgrid(fields={"U": ds["uo"], "V": ds["vo"]}, coords=coords)
+
+
+@pytest.mark.filterwarnings("ignore:The delft3d_to_sgrid function is experimental")
+def test_convert_sets_only_conventions_global_attr():
+    U = parcels.tutorial.open_dataset("NemoCurvilinear_data_zonal/U")
+    V = parcels.tutorial.open_dataset("NemoCurvilinear_data_zonal/V")
+    coords = parcels.tutorial.open_dataset("NemoCurvilinear_data_zonal/mesh_mask")
+    U.attrs["source"] = "NEMO"
+    ds = convert.nemo_to_sgrid(fields=dict(U=U, V=V), coords=coords)
+    assert ds.attrs == {"Conventions": "SGRID"}
+
+    ds = open_remote_dataset("Delft3D_data/Rotterdam_tiny")
+    ds_fset = convert.delft3d_to_sgrid(fields={"U": ds["VELU"], "V": ds["VELV"]}, coords=ds[["XZETA", "YZETA"]])
+    assert ds_fset.attrs == {"Conventions": "SGRID"}
+
+
+def test_convert_nemo_surface_adds_depth_after_time():
+    U = parcels.tutorial.open_dataset("NemoCurvilinear_data_zonal/U")
+    V = parcels.tutorial.open_dataset("NemoCurvilinear_data_zonal/V")
+    coords = parcels.tutorial.open_dataset("NemoCurvilinear_data_zonal/mesh_mask")
+    ds = convert.nemo_to_sgrid(fields=dict(U=U, V=V), coords=coords)
+    assert ds["U"].dims[:2] == ("time", "depth")
+    assert ds["V"].dims[:2] == ("time", "depth")
+
+
+def test_convert_dataset_field_without_matching_variable():
+    ds = datasets_circulation_models["ds_copernicusmarine"]
+    with pytest.raises(ValueError, match=r"fields\['U'\] is a Dataset without a variable named 'U'"):
+        convert.copernicusmarine_to_sgrid(fields={"U": ds, "V": ds})
+
+
 def test_mom6_to_sgrid_cefi_example():
     U = parcels.tutorial.open_dataset("MOM6_example_data/U")["ssu"]
     V = parcels.tutorial.open_dataset("MOM6_example_data/V")["ssv"]
@@ -213,7 +273,7 @@ def test_mom6_to_sgrid_cefi_example():
     # CEFI NEP output is symmetric: one more corner point than cell centres along each axis
     assert ds["grid"].attrs["face_dimensions"] == "xh:xq (padding:none) yh:yq (padding:none)"
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="spherical")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     lon = float(ds["lon"].mean())
     lat = float(ds["lat"].mean())
     pset = parcels.ParticleSet(fieldset, x=[lon], y=[lat])
@@ -263,7 +323,7 @@ def test_mom6_to_sgrid(symmetric, padding):
         meta.get_value_by_id("node_dimension2"),  # Y edge
     }.issubset(set(ds["V"].dims))
 
-    FieldSet.from_sgrid_conventions(ds, mesh="spherical")
+    FieldSet.from_sgrid_conventions(ds)
 
 
 def test_mom6_to_sgrid_inconsistent_sizes():

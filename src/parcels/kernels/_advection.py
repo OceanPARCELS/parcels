@@ -193,7 +193,7 @@ def AdvectionAnalytical(particles, fieldset):  # pragma: no cover
     else:
         px = np.array([grid.x[yi, xi], grid.x[yi, xi + 1], grid.x[yi + 1, xi + 1], grid.x[yi + 1, xi]])
         py = np.array([grid.y[yi, xi], grid.y[yi, xi + 1], grid.y[yi + 1, xi + 1], grid.y[yi + 1, xi]])
-    if grid.mesh == "spherical":
+    if grid.mesh.is_spherical():
         px[0] = px[0] + 360 if px[0] < particles.x - 225 else px[0]
         px[0] = px[0] - 360 if px[0] > particles.y + 225 else px[0]
         px[1:] = np.where(px[1:] - px[0] > 180, px[1:] - 360, px[1:])
@@ -210,7 +210,7 @@ def AdvectionAnalytical(particles, fieldset):  # pragma: no cover
     c4 = i_u._geodetic_distance(py[3], py[0], px[3], px[0], grid.mesh, np.dot(i_u.phi2D_lin(eta, 0.0), py), grid.deg2m)
     rad = np.pi / 180.0
     deg2m = grid.deg2m
-    meshJac = (deg2m * deg2m * math.cos(rad * particles.y)) if grid.mesh == "spherical" else 1
+    meshJac = (deg2m * deg2m * math.cos(rad * particles.y)) if grid.mesh.is_spherical() else 1
     dxdy = i_u._compute_jacobian_determinant(py, px, eta, xsi) * meshJac
 
     if withW:

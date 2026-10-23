@@ -149,13 +149,13 @@ def reduced_dims_dataset(
             node, face = _AXIS_DIMS[axis]
             n = sizes.get(axis, 4)
             padding = paddings.get(axis, sgrid.Padding.HIGH)
-            coords[node] = ([node], np.arange(n, dtype=float), {"axis": axis})
+            coords[node] = ([node], np.arange(n, dtype=float), {"axis": axis, "units": "m"})
             coords[face] = ([face], np.arange(sgrid.get_n_faces(n, padding), dtype=float) + 0.5, {"axis": axis})
     if "Z" in spatial_axes:
         coords["depth"] = (["ZG"], np.arange(sizes.get("Z", 4), dtype=float))
     if {"X", "Y"} <= spatial_axes:
-        coords["lon"] = (["XG"], np.arange(sizes.get("X", 4), dtype=float))
-        coords["lat"] = (["YG"], np.arange(sizes.get("Y", 4), dtype=float))
+        coords["lon"] = (["XG"], np.arange(sizes.get("X", 4), dtype=float), {"units": "m"})
+        coords["lat"] = (["YG"], np.arange(sizes.get("Y", 4), dtype=float), {"units": "m"})
     if n_times > 0:
         coords["time"] = (["time"], _TIME_BASE[:n_times] + np.timedelta64(offset_days, "D"), {"axis": "T"})
 

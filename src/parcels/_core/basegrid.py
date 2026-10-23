@@ -26,7 +26,7 @@ class BaseGrid(ABC):
     """Base class for parcels.XGrid and parcels.UxGrid defining common methods and properties"""
 
     _spatialhash: SpatialHash | None
-    _mesh: FlatMesh | SphericalMesh
+    mesh: FlatMesh | SphericalMesh
 
     @abstractmethod
     def search(

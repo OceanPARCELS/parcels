@@ -19,7 +19,7 @@ def test_ux_constant_flow_face_centered_2D(integrator, tmp_parquet):
     T = np.timedelta64(3600, "s")
     dt = np.timedelta64(300, "s")
 
-    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_ugrid_conventions(ds)
     pset = parcels.ParticleSet(fieldset, x=[5.0], y=[5.0])
     pfile = parcels.ParticleFile(path=tmp_parquet, outputdt=dt)
     pset.execute(integrator, runtime=T, dt=dt, output_file=pfile, verbose_progress=False)
@@ -40,7 +40,7 @@ def test_ux_advection_on_moving_sigma_grid_keeps_depth():
     ds = sigma_coordinate_lattice_dataset(nx, (0.0, 4e3), (0.0, 4e3), nz, bottom_depth, eta)
     u0 = 0.5
     ds["U"].values[:] = u0
-    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_ugrid_conventions(ds)
 
     x0, z0 = 200.0, np.array([2.0, 8.0, 15.0])
     pset = parcels.ParticleSet(fieldset, x=np.full(z0.size, x0), y=np.full(z0.size, 2e3), z=z0)

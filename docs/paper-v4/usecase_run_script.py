@@ -48,7 +48,7 @@ uxds = ux.UxDataset(
     uxgrid=uxgrid,
 )
 
-fieldset = parcels.FieldSet.from_ugrid_conventions(uxds, mesh="spherical")
+fieldset = parcels.FieldSet.from_ugrid_conventions(uxds)
 
 # %% Add Stokes drift to the fieldset
 files = sorted(glob.glob(f"{DIR}/waves/swan_kuststrook_harmonie_*.nc"))

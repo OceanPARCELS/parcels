@@ -14,6 +14,7 @@ import xarray as xr
 import parcels
 from parcels import FieldSet, Particle, Variable
 from parcels._core.index_search import _latlon_rad_to_xyz
+from parcels._core.mesh import FlatMesh, SphericalMesh
 from parcels._core.xgrid import _FIELD_DATA_ORDERING, XGrid, get_axis_from_dim_name
 from parcels._datasets.structured.generated import simple_UV_dataset
 
@@ -74,13 +75,16 @@ def create_fieldset_global(xdim=200, ydim=100):
     return FieldSet.from_data(data, dimensions, mesh="flat")
 
 
-def create_fieldset_zeros_conversion(mesh="spherical", xdim=200, ydim=100) -> FieldSet:
+def create_fieldset_zeros_conversion(mesh_str="spherical", xdim=200, ydim=100) -> FieldSet:
     """Zero velocity field with lat and lon determined by a conversion factor."""
-    mesh_conversion = 1 / 1852.0 / 60 if mesh == "spherical" else 1
-    ds = simple_UV_dataset(n_times=2, nz=1, ny=ydim, nx=xdim, mesh=mesh)
+    mesh_conversion = 1 / 1852.0 / 60 if mesh_str == "spherical" else 1
+    ds = simple_UV_dataset(n_times=2, nz=1, ny=ydim, nx=xdim, mesh_str=mesh_str)
     ds["lon"].data = np.linspace(-1e6 * mesh_conversion, 1e6 * mesh_conversion, xdim)
     ds["lat"].data = np.linspace(-1e6 * mesh_conversion, 1e6 * mesh_conversion, ydim)
-    return FieldSet.from_sgrid_conventions(ds, mesh=mesh)
+    if mesh_str == "spherical":
+        ds["lon"].attrs["units"] = "degrees_east"
+        ds["lat"].attrs["units"] = "degrees_north"
+    return FieldSet.from_sgrid_conventions(ds)
 
 
 def create_simple_pset(n=1):
@@ -169,6 +173,11 @@ def assert_cftime_like_particlefile(parquet_path: Path) -> None:
     return
 
 
+def mesh_from_name(mesh):
+    """Map "flat"/"spherical" (used to parametrise tests) to mesh objects."""
+    return {"flat": FlatMesh(), "spherical": SphericalMesh()}[mesh] if isinstance(mesh, str) else mesh
+
+
 def create_uxgrid_from_triangulation(node_lon, node_lat, faces, mesh="spherical", z=(0.0, 1.0)):
     """Wrap a bare triangulation (node lon/lat in degrees, triangles) in a parcels UxGrid."""
     import uxarray as ux
@@ -181,7 +190,7 @@ def create_uxgrid_from_triangulation(node_lon, node_lat, faces, mesh="spherical"
         face_node_connectivity=np.asarray(faces, dtype=np.int64),
     )
     zc = ux.UxDataArray(np.asarray(z, dtype=np.float64), dims="zf", uxgrid=uxgrid)
-    return UxGrid(uxgrid, zc, mesh=mesh)
+    return UxGrid(uxgrid, zc, mesh=mesh_from_name(mesh))
 
 
 def create_lonlat_grid(grid_type, face_deg, centre=(0.0, 0.0), n=8, mesh="spherical"):
@@ -229,10 +238,11 @@ def create_lonlat_grid(grid_type, face_deg, centre=(0.0, 0.0), n=8, mesh="spheri
     if grid_type == "uxgrid":
         grid = create_uxgrid_from_triangulation(nodes[:, 0], nodes[:, 1], faces, mesh=mesh)
     else:
-        ds = simple_UV_dataset(n_times=2, nz=2, ny=n + 1, nx=n + 1, mesh=mesh).assign_coords(
-            lon=(("YG", "XG"), grid_lon), lat=(("YG", "XG"), grid_lat)
+        unit = "degrees" if mesh == "spherical" else "m"
+        ds = simple_UV_dataset(n_times=2, nz=2, ny=n + 1, nx=n + 1, mesh_str=mesh).assign_coords(
+            lon=(("YG", "XG"), grid_lon, {"units": unit}), lat=(("YG", "XG"), grid_lat, {"units": unit})
         )
-        grid = FieldSet.from_sgrid_conventions(ds, mesh=mesh).U.grid
+        grid = FieldSet.from_sgrid_conventions(ds).U.grid
     return grid, nodes, faces
 
 

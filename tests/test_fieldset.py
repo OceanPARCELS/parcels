@@ -15,7 +15,7 @@ import tests
 from parcels import Particle, ParticleFile, ParticleSet, Variable, convert
 from parcels._core.fieldset import FieldSet, IncompatibleMeshesException, _datetime_to_msg
 from parcels._core.mesh import SphericalMesh
-from parcels._core.model import _default_vector_field_components
+from parcels._core.model import _default_vector_field_components, _infer_mesh_from_sgrid_data
 from parcels._core.utils.time import TimeInterval
 from parcels._datasets.structured.generated import simple_UV_sigma_dataset
 from parcels._datasets.structured.generic import datasets as datasets_structured
@@ -34,8 +34,8 @@ def fieldset_two_models():
         {"U_A_grid": "U_wind", "V_A_grid": "V_wind"}
     )
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
+    fset2 = FieldSet.from_sgrid_conventions(ds2, vector_fields={"UV_wind": ("U_wind", "V_wind")})
     fset2.add_context("my_value", 2.0)
     fset2.add_context("my_list", [1, 2, "hello"])
     fset2.add_constant_field("constant_field", 3.0)
@@ -101,7 +101,7 @@ def test_fieldset_gridset(fieldset):
 
 
 def test_fieldset_no_UV(tmp_parquet):
-    fieldset = FieldSet.from_sgrid_conventions(ds[["U_A_grid", "grid"]].rename({"U_A_grid": "P"}), mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds[["U_A_grid", "grid"]].rename({"U_A_grid": "P"}))
 
     def SampleP(particles, fieldset):
         particles.dx += fieldset.P[particles]
@@ -116,7 +116,7 @@ def test_fieldset_no_UV(tmp_parquet):
 
 @pytest.mark.parametrize("ds", [pytest.param(ds, id=k) for k, ds in datasets_structured.items()])
 def test_fieldset_from_structured_generic_datasets(ds):
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     assert len(fieldset.fields) == len(ds.data_vars) - 1  # `-1` for the SGRID metadata
     for field in fieldset.fields.values():
@@ -154,13 +154,13 @@ def test_fieldset_invalid_vector_fields(vector_fields, ctx):
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
 
     with ctx:
-        FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields=vector_fields)
+        FieldSet.from_sgrid_conventions(ds, vector_fields=vector_fields)
 
 
 def test_fieldset_structured_vectorfield_default():
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fset = FieldSet.from_sgrid_conventions(ds)
 
     assert "U" in fset.fields
     assert "V" in fset.fields
@@ -171,7 +171,7 @@ def test_fieldset_structured_vectorfield_custom():
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
     ds = ds.rename({"U": "U_wind", "V": "V_wind"})
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset = FieldSet.from_sgrid_conventions(ds, vector_fields={"UV_wind": ("U_wind", "V_wind")})
 
     assert "U_wind" in fset.fields
     assert "V_wind" in fset.fields
@@ -181,7 +181,7 @@ def test_fieldset_structured_vectorfield_custom():
 def test_fieldset_structured_vectorfield_empty():
     ds = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields={})
+    fset = FieldSet.from_sgrid_conventions(ds, vector_fields={})
 
     assert "U" in fset.fields
     assert "V" in fset.fields
@@ -190,7 +190,7 @@ def test_fieldset_structured_vectorfield_empty():
 
 def test_fieldset_unstructured_vectorfield_default():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
-    fset = FieldSet.from_ugrid_conventions(ds, mesh="spherical")
+    fset = FieldSet.from_ugrid_conventions(ds)
 
     assert "U" in fset.fields
     assert "V" in fset.fields
@@ -201,7 +201,7 @@ def test_fieldset_unstructured_vectorfield_custom():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
     ds = ds.rename({"U": "U_wind", "V": "V_wind"})
 
-    fset = FieldSet.from_ugrid_conventions(ds, mesh="spherical", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset = FieldSet.from_ugrid_conventions(ds, vector_fields={"UV_wind": ("U_wind", "V_wind")})
 
     assert "U_wind" in fset.fields
     assert "V_wind" in fset.fields
@@ -211,7 +211,7 @@ def test_fieldset_unstructured_vectorfield_custom():
 def test_fieldset_unstructured_vectorfield_empty():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
 
-    fset = FieldSet.from_ugrid_conventions(ds, mesh="spherical", vector_fields={})
+    fset = FieldSet.from_ugrid_conventions(ds, vector_fields={})
 
     assert "U" in fset.fields
     assert "V" in fset.fields
@@ -233,15 +233,15 @@ def test_default_vector_field_components(data_vars, expected):
 
 def test_multi_model_time_interval():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]]
-    fieldset = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds1)
 
     ds2 = ds1.copy().rename({"U_A_grid": "U2", "V_A_grid": "V2"})
     ds2["time"] = (ds2["time"].dims, ds2["time"].data + np.timedelta64(timedelta(days=1)), ds2["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds2)
 
     ds3 = ds1.copy().rename({"U_A_grid": "U3", "V_A_grid": "V3"})
     ds3["time"] = (ds3["time"].dims, ds3["time"].data + np.timedelta64(timedelta(days=2)), ds3["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds3, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds3)
 
     fieldset.add_constant_field("constant_field", 1.0)
 
@@ -253,15 +253,15 @@ def test_multi_model_time_interval():
 
 def test_multi_model_nonoverlapping_time_interval():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]]
-    fieldset = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds1)
 
     ds2 = ds1.copy().rename({"U_A_grid": "U2", "V_A_grid": "V2"})
     ds2["time"] = (ds2["time"].dims, ds2["time"].data + np.timedelta64(timedelta(days=1000)), ds2["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds2)
 
     ds3 = ds1.copy().rename({"U_A_grid": "U3", "V_A_grid": "V3"})
     ds3["time"] = (ds3["time"].dims, ds3["time"].data + np.timedelta64(timedelta(days=2000)), ds3["time"].attrs)
-    fieldset += FieldSet.from_sgrid_conventions(ds3, mesh="flat")
+    fieldset += FieldSet.from_sgrid_conventions(ds3)
 
     fieldset.add_constant_field("constant_field", 1.0)
 
@@ -343,7 +343,7 @@ def test_fieldset_from_fesom2_missingUV():
 @pytest.mark.parametrize("ds_name", list(datasets_sgrid.keys()))
 def test_fieldset_from_sgrid_conventions(ds_name):
     ds = datasets_sgrid[ds_name]
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     assert isinstance(fieldset, FieldSet)
     assert len(fieldset.fields) > 0
 
@@ -355,16 +355,16 @@ def test_fieldset_from_sgrid_conventions_inconsistent_padding(face_dim):
     ds = ds.isel({face_dim: slice(1, None)})  # plain xarray isel, so face dim is one shorter than the node dim
 
     with pytest.raises(SGridDatasetInconsistency, match=f"face dimension {face_dim!r}"):
-        FieldSet.from_sgrid_conventions(ds, mesh="flat")
+        FieldSet.from_sgrid_conventions(ds)
 
 
 def test_fieldset_skip_field_data_validation():
     ds = datasets_structured["ds_2d_left"]
     ds["U_A_grid"][:] = np.nan
 
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     assert np.isfinite(fieldset.U_A_grid.data).all()
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat", skip_field_data_validation=True)
+    fieldset = FieldSet.from_sgrid_conventions(ds, skip_field_data_validation=True)
     assert np.isnan(fieldset.U_A_grid.data).all()
 
 
@@ -373,8 +373,8 @@ def test_fieldset_add_error_on_duplicate_fields():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "V_A_grid", "grid"]].rename({"U_A_grid": "U", "V_A_grid": "V"})
     ds2 = ds1.copy()
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
+    fset2 = FieldSet.from_sgrid_conventions(ds2)
 
     with pytest.raises(ValueError, match="field names in common.*'U'"):
         fset1 + fset2
@@ -387,8 +387,8 @@ def test_fieldset_add():
         {"U_A_grid": "U_wind", "V_A_grid": "V_wind"}
     )
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat", vector_fields={"UV_wind": ("U_wind", "V_wind")})
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
+    fset2 = FieldSet.from_sgrid_conventions(ds2, vector_fields={"UV_wind": ("U_wind", "V_wind")})
 
     fset = fset1 + fset2
 
@@ -411,7 +411,7 @@ def test_fieldset_add_different_meshes():
     )
     fset2 = FieldSet.from_sgrid_conventions(
         ds2,
-        mesh="spherical",  # earth
+        mesh=SphericalMesh(),  # earth
         vector_fields={"UV_wind": ("U_wind", "V_wind")},
     )
 
@@ -425,7 +425,7 @@ def test_vectorfields_without_time():
     ds2 = ds1.isel(time=0).drop_vars("time").rename({"U": "U_const", "V": "V_const"})
     ds = xr.merge([ds1, ds2])
 
-    fset = FieldSet.from_sgrid_conventions(ds, mesh="flat", vector_fields={"UV_const": ("U_const", "V_const")})
+    fset = FieldSet.from_sgrid_conventions(ds, vector_fields={"UV_const": ("U_const", "V_const")})
     fset.UV_const.eval(t=0, z=0, y=0, x=0)
     fset.U_const.eval(t=0, z=0, y=0, x=0)
 
@@ -435,10 +435,10 @@ def test_fieldset_add_error_on_duplicate_context_values():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "grid"]].rename({"U_A_grid": "U1"})
     ds2 = datasets_structured["ds_2d_left"][["V_A_grid", "grid"]].rename({"V_A_grid": "V2"})
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
     fset1.add_context("kh", 1.0)
 
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fset2 = FieldSet.from_sgrid_conventions(ds2)
     fset2.add_context("kh", 2.0)
 
     with pytest.raises(ValueError, match="context value names in common.*'kh'"):
@@ -450,10 +450,10 @@ def test_fieldset_add_context_values():
     ds1 = datasets_structured["ds_2d_left"][["U_A_grid", "grid"]].rename({"U_A_grid": "U1"})
     ds2 = datasets_structured["ds_2d_left"][["V_A_grid", "grid"]].rename({"V_A_grid": "V2"})
 
-    fset1 = FieldSet.from_sgrid_conventions(ds1, mesh="flat")
+    fset1 = FieldSet.from_sgrid_conventions(ds1)
     fset1.add_context("c1", 1.0)
 
-    fset2 = FieldSet.from_sgrid_conventions(ds2, mesh="flat")
+    fset2 = FieldSet.from_sgrid_conventions(ds2)
     fset2.add_context("c2", 2.0)
 
     fset = fset1 + fset2
@@ -498,7 +498,7 @@ def _expected_time_interval(datasets):
 @settings(deadline=None, max_examples=50)
 def test_fieldset_add_varying_grid_dimensionality(datasets):
     """Models with grids of varying dimensionality (0D-4D) can be combined into one FieldSet."""
-    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    fieldsets = [FieldSet.from_sgrid_conventions(ds) for ds in datasets]
     combined = fieldsets[0]
     for fieldset in fieldsets[1:]:
         combined = combined + fieldset
@@ -537,7 +537,7 @@ def test_fieldset_add_varying_grid_dimensionality_execute(datasets):
     Models with 0D (spatially constant) grids are excluded, as sampling such fields from a
     kernel is not supported yet (issue #2054).
     """
-    fieldsets = [FieldSet.from_sgrid_conventions(ds, mesh="flat") for ds in datasets]
+    fieldsets = [FieldSet.from_sgrid_conventions(ds) for ds in datasets]
     combined = fieldsets[0]
     for fieldset in fieldsets[1:]:
         combined = combined + fieldset
@@ -573,15 +573,22 @@ def test_fieldset_add_4d_base_and_reduced_dims_model(spatial_axes, n_times):
     base = reduced_dims_dataset(frozenset("XYZ"), (3, 0), "base_field", value=1.0)
     reduced = reduced_dims_dataset(spatial_axes, (n_times, 0), "reduced_field", value=2.0)
 
-    combined = FieldSet.from_sgrid_conventions(base, mesh="flat") + FieldSet.from_sgrid_conventions(
-        reduced, mesh="flat"
-    )
+    combined = FieldSet.from_sgrid_conventions(base) + FieldSet.from_sgrid_conventions(reduced)
 
     assert len(combined.models) == 2
     assert set(combined.fields) == {"base_field", "reduced_field"}
     assert combined.fields["reduced_field"].grid.axes == _expected_grid_axes(reduced)
     assert combined.fields["base_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(1.0, rel=1e-9)
     assert combined.fields["reduced_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(2.0, rel=1e-9)
+
+
+def test_infer_mesh_from_sgrid_data_missing_node_coordinates_raises():
+    ds = reduced_dims_dataset(frozenset("XY"), (1, 0), "field", value=1.0).copy()
+    ds["grid"].attrs.pop("node_coordinates")
+
+    assert ds.sgrid.metadata.node_coordinates is None
+    with pytest.raises(ValueError, match="no 'node_coordinates'"):
+        _infer_mesh_from_sgrid_data(ds)
 
 
 def test_fieldset_describe(fieldset_two_models: FieldSet):
@@ -673,9 +680,9 @@ def test_fieldset_from_simple_UV_sigma_dataset(n_snapshots):
     nz, ny, nx = 4, 6, 5
     eta = np.broadcast_to(np.linspace(-1.0, 1.0, n_snapshots)[:, np.newaxis, np.newaxis], (n_snapshots, ny, nx))
     ds = simple_UV_sigma_dataset(n_snapshots, nz, ny, nx, np.full((ny, nx), 50.0), eta)
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     depth = fieldset.U.grid._ds["depth"]
-    assert depth.dims == ("time", "depth", "YC", "XC")
+    assert depth.dims == ("time", "ZF", "YC", "XC")
     assert depth.sizes["time"] == n_snapshots
     assert fieldset.U.grid.get_axis_dim("Z") == nz

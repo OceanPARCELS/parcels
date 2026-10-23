@@ -22,6 +22,7 @@ import numpy as np
 import pytest
 
 import parcels
+from parcels._core.mesh import FlatMesh
 from parcels._datasets.unstructured.generated import (
     solid_body_rotation_3d_face_centered,
     solid_body_rotation_3d_node_centered,
@@ -70,7 +71,7 @@ T1_3_RUNTIME = T1_2_RUNTIME
 @pytest.mark.parametrize("integrator", [AdvectionEE, AdvectionRK4], ids=["EE", "RK4"])
 def test_uniform_translation_exact(dataset_fn, integrator):
     ds = dataset_fn(nx=20, u0=T1_1_U0, v0=T1_1_V0)
-    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     pset = parcels.ParticleSet(fieldset, x=[T1_1_LON0], y=[T1_1_LAT0])
     pset.execute(integrator, runtime=T1_1_RUNTIME, dt=T1_1_DT, verbose_progress=False)
@@ -82,7 +83,7 @@ def test_uniform_translation_exact(dataset_fn, integrator):
 
 def test_solid_body_rotation_node_centered_rk4_returns_to_start():
     ds = solid_body_rotation_node_centered(nx=40, omega=T1_2_OMEGA)
-    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     pset = parcels.ParticleSet(fieldset, x=[T1_2_LON0], y=[T1_2_LAT0])
     pset.execute(AdvectionRK4, runtime=T1_2_RUNTIME, dt=T1_2_DT, verbose_progress=False)
@@ -96,7 +97,7 @@ def test_solid_body_rotation_face_centered_runs_bounded(integrator):
     # Piecewise-constant interpolation has spatial truncation error on a linear field,
     # so we only assert the trajectory stays inside the [-5, 5] mesh.
     ds = solid_body_rotation_face_centered(nx=40, omega=T1_2_OMEGA)
-    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     pset = parcels.ParticleSet(fieldset, x=[T1_2_LON0], y=[T1_2_LAT0])
     pset.execute(integrator, runtime=T1_2_RUNTIME, dt=T1_2_DT, verbose_progress=False)
@@ -106,7 +107,7 @@ def test_solid_body_rotation_face_centered_runs_bounded(integrator):
 
 def test_helix_node_centered_rk4_3d_returns_to_start_with_exact_depth():
     ds = solid_body_rotation_3d_node_centered(nx=40, nz=10, omega=T1_2_OMEGA, w0=T1_3_W0)
-    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     pset = parcels.ParticleSet(fieldset, x=[T1_2_LON0], y=[T1_2_LAT0], z=[T1_3_Z0])
     pset.execute(AdvectionRK4_3D, runtime=T1_3_RUNTIME, dt=T1_3_DT, verbose_progress=False)
@@ -126,7 +127,7 @@ def test_helix_constant_vertical_velocity_exact_depth(dataset_fn):
     # Constant w implies linear-in-z interpolation and constant-RHS depth ODE are both exact,
     # independent of horizontal grid placement.
     ds = dataset_fn(nx=40, nz=10, omega=T1_2_OMEGA, w0=T1_3_W0)
-    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh="flat")
+    fieldset = parcels.FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     pset = parcels.ParticleSet(fieldset, x=[T1_2_LON0], y=[T1_2_LAT0], z=[T1_3_Z0])
     pset.execute(AdvectionRK4_3D, runtime=T1_3_RUNTIME, dt=T1_3_DT, verbose_progress=False)

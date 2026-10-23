@@ -15,7 +15,7 @@ from tests.utils import create_lonlat_grid, sample_points_inside_faces
 @pytest.fixture
 def field_cone():
     ds = datasets["2d_left_unrolled_cone"]
-    fieldset = FieldSet.from_sgrid_conventions(ds, mesh="flat")
+    fieldset = FieldSet.from_sgrid_conventions(ds)
     return fieldset.data_g
 
 

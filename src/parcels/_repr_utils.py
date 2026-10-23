@@ -77,7 +77,7 @@ def xgrid_repr(grid: Any) -> str:
     """Return a pretty repr for Grid"""
     out = f"""<{type(grid).__name__}>
     Parcels attributes:
-        mesh                  : {grid._mesh}
+        mesh                  : {grid.mesh}
         spatialhash           : {grid._spatialhash}
     SGRID Metadata:
 {textwrap.indent(repr(grid.sgrid_metadata), 8 * " ")}
@@ -273,7 +273,7 @@ def fieldset_describe(fieldset: FieldSet) -> str:
         + f"""\
 
 
-mesh: {fieldset.models[0].grid._mesh}
+mesh: {fieldset.models[0].grid.mesh}
 time interval: {_print_time_interval(fieldset.time_interval)}
 """
     )
@@ -292,7 +292,7 @@ def spatialhash_describe(spatialhash: SpatialHash) -> str:
 
     rows = {
         "Grid type": type(grid).__name__,
-        "Mesh": grid._mesh,
+        "Mesh": grid.mesh,
         "Total mesh faces": f"{n_faces:,d}",
         "Valid (non-NaN) mesh faces": f"{n_valid_faces:,d}",
         "Bitwidth (current / max)": f"{spatialhash._bitwidth} / 1023  (higher = finer resolution hash grid)",

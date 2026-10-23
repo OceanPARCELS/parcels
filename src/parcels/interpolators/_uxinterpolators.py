@@ -166,7 +166,7 @@ class Ux_Velocity(VectorInterpolator):  # noqa: N801
     ):
         u = vectorfield.U.interp_method.interp(particle_positions, grid_positions, vectorfield.U)
         v = vectorfield.V.interp_method.interp(particle_positions, grid_positions, vectorfield.V)
-        if vectorfield.grid._mesh.is_spherical():
+        if vectorfield.grid.mesh.is_spherical():
             u /= vectorfield.grid.deg2m * np.cos(np.deg2rad(particle_positions["y"]))
             v /= vectorfield.grid.deg2m
 
