@@ -95,7 +95,7 @@ Unstructured grids have a single face index rather than a $(j,i)$ pair. So that 
 
 **Function:** `parcels._core.spatialhash._spherical_face_bounds`
 
-Whenever a mesh is a `SphericalMesh()`, a cell's edges are arcs of great circles on the sphere that the mesh sits on. Therefore, the face itself is a curved patch that bulges away from the flat polygon through its nodes. The extremes of $x$, $y$ and $z$ reached anywhere on that patch must be taken as the bounds for the hash grid; if we used the node coordinates alone, a particle sitting in the bulge of a face could land in a hash cell that the face is not registered in, and the particle would never be found.
+Whenever a mesh is a `SphericalMesh()` (which is also the default for coordinate units of degrees), a cell's edges are arcs of great circles on the sphere that the mesh sits on. Therefore, the face itself is a curved patch that bulges away from the flat polygon through its nodes. The extremes of $x$, $y$ and $z$ reached anywhere on that patch must be taken as the bounds for the hash grid; if we used the node coordinates alone, a particle sitting in the bulge of a face could land in a hash cell that the face is not registered in, and the particle would never be found.
 
 `_spherical_face_bounds` computes these minima and maxima for each face in closed form, without sampling points along the face. On a convex spherical face, a coordinate's extreme can only sit in one of three places, so we take the most extreme candidate from each:
 
