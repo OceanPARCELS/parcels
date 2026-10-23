@@ -1,6 +1,6 @@
 """
-This module provide a series of functions model outputs (which might be following their
-own conventions) to metadata rich data (i.e., data following SGRID/UGRID as well as CF
+This module provides a series of functions to convert model outputs (which might be following
+their own conventions) to metadata rich data (i.e., data following SGRID/UGRID as well as CF
 conventions). Parcels needs this metadata rich data to discover grid geometries among other
 things.
 
@@ -12,6 +12,7 @@ be determined before they pass it to the FieldSet constructor.
 
 from __future__ import annotations
 
+import dataclasses
 import enum
 import typing
 import warnings
@@ -34,15 +35,44 @@ class _Status(enum.Enum):
     OPTIONAL = enum.auto()
 
 
-_NEMO_EXPECTED_COORDS: list[tuple[str, _Status]] = [
-    ("glamf", _Status.REQUIRED),
-    ("gphif", _Status.REQUIRED),
-    ("depthw", _Status.OPTIONAL),
-]
+@dataclasses.dataclass(frozen=True)
+class _ModelConventions:
+    """Names used in a model's output, and how they map onto the names Parcels expects."""
 
+    expected_coords: list[tuple[str, _Status]] = dataclasses.field(default_factory=list)
+    """Coordinates to pick out of the user-provided ``coords`` dataset."""
+    varnames_mapping: dict[str, str] = dataclasses.field(default_factory=dict)
+    """Renames for variables and coordinates."""
+    axis_varnames: dict[str, XgcmAxisDirection] = dataclasses.field(default_factory=dict)
+    """CF axis of each dimension coordinate (set as its 'axis' attribute)."""
+
+
+_NEMO = _ModelConventions(
+    expected_coords=[
+        ("glamf", _Status.REQUIRED),
+        ("gphif", _Status.REQUIRED),
+        ("depthw", _Status.OPTIONAL),
+    ],
+    varnames_mapping={
+        "time_counter": "time",
+        "depthw": "depth",
+        "uo": "U",
+        "vo": "V",
+        "wo": "W",
+    },
+    axis_varnames={
+        "x": "X",
+        "x_center": "X",
+        "y": "Y",
+        "y_center": "Y",
+        "depth": "Z",
+        "depth_center": "Z",
+        "time": "T",
+    },
+)
+
+# Dimensions and coordinates kept in the NEMO output (others are dropped)
 _NEMO_DIMENSION_COORD_NAMES: list[str] = [
-    "x",
-    "y",
     "time",
     "x",
     "x_center",
@@ -54,29 +84,29 @@ _NEMO_DIMENSION_COORD_NAMES: list[str] = [
     "gphif",
 ]
 
-_NEMO_AXIS_VARNAMES: dict[str, XgcmAxisDirection] = {
-    "x": "X",
-    "x_center": "X",
-    "y": "Y",
-    "y_center": "Y",
-    "depth": "Z",
-    "depth_center": "Z",
-    "time": "T",
-}
-
-_NEMO_VARNAMES_MAPPING: dict[str, str] = {
-    "time_counter": "time",
+# NEMO uses a separate depth dimension per grid (T, U, V and W points)
+_NEMO_DEPTH_DIM_RENAMES: dict[str, str] = {
+    "depthu": "depth_center",
+    "depthv": "depth_center",
+    "deptht": "depth_center",
     "depthw": "depth",
-    "uo": "U",
-    "vo": "V",
-    "wo": "W",
 }
 
-_MOM6_EXPECTED_COORDS: list[tuple[str, _Status]] = [
-    ("geolon_c", _Status.REQUIRED),
-    ("geolat_c", _Status.REQUIRED),
-]
+_MOM6 = _ModelConventions(
+    expected_coords=[
+        ("geolon_c", _Status.REQUIRED),
+        ("geolat_c", _Status.REQUIRED),
+    ],
+    axis_varnames={
+        "xq": "X",
+        "xh": "X",
+        "yq": "Y",
+        "yh": "Y",
+        "time": "T",
+    },
+)
 
+# Dimensions and coordinates kept in the MOM6 output (others are dropped)
 _MOM6_DIMENSION_COORD_NAMES: list[str] = [
     "xq",
     "yq",
@@ -87,37 +117,39 @@ _MOM6_DIMENSION_COORD_NAMES: list[str] = [
     "geolat_c",
 ]
 
-_MOM6_AXIS_VARNAMES: dict[str, XgcmAxisDirection] = {
-    "xq": "X",
-    "xh": "X",
-    "yq": "Y",
-    "yh": "Y",
-    "time": "T",
-}
+_MITGCM = _ModelConventions(
+    expected_coords=[(name, _Status.REQUIRED) for name in ["XG", "YG", "Zl"]],
+    varnames_mapping={
+        "XG": "lon",
+        "YG": "lat",
+        "Zl": "depth",
+    },
+    axis_varnames={
+        "XC": "X",
+        "XG": "X",
+        "Xp1": "X",
+        "lon": "X",
+        "YC": "Y",
+        "YG": "Y",
+        "Yp1": "Y",
+        "lat": "Y",
+        "Zu": "Z",
+        "Zl": "Z",
+        "Zp1": "Z",
+        "time": "T",
+    },
+)
 
-_MITGCM_EXPECTED_COORDS: list[tuple[str, _Status]] = [(name, _Status.REQUIRED) for name in ["XG", "YG", "Zl"]]
+_CROCO = _ModelConventions(
+    expected_coords=[(name, _Status.REQUIRED) for name in ["x_rho", "y_rho", "s_w", "time"]],
+    varnames_mapping={
+        "x_rho": "lon",
+        "y_rho": "lat",
+        "s_w": "depth",
+    },
+)
 
-_MITGCM_AXIS_VARNAMES: dict[str, XgcmAxisDirection] = {
-    "XC": "X",
-    "XG": "X",
-    "Xp1": "X",
-    "lon": "X",
-    "YC": "Y",
-    "YG": "Y",
-    "Yp1": "Y",
-    "lat": "Y",
-    "Zu": "Z",
-    "Zl": "Z",
-    "Zp1": "Z",
-    "time": "T",
-}
-
-_MITGCM_VARNAMES_MAPPING: dict[str, str] = {
-    "XG": "lon",
-    "YG": "lat",
-    "Zl": "depth",
-}
-
+# Copernicus Marine data is CF compliant, so coordinates are found by their CF axis and renamed
 _COPERNICUS_MARINE_AXIS_VARNAMES: dict[XgcmAxisDirection, str] = {
     "X": "lon",
     "Y": "lat",
@@ -125,32 +157,25 @@ _COPERNICUS_MARINE_AXIS_VARNAMES: dict[XgcmAxisDirection, str] = {
     "T": "time",
 }
 
-_DELFT3D_X_EXPECTED_COORDS: list[tuple[str, _Status]] = [(name, _Status.REQUIRED) for name in ["XZETA", "YZETA"]]
+_DELFT3D_X = _ModelConventions(
+    expected_coords=[(name, _Status.REQUIRED) for name in ["XZETA", "YZETA"]],
+    varnames_mapping={
+        "XZETA": "lon",
+        "YZETA": "lat",
+        "SIGMA_C": "depth",
+        "TIME": "time",
+    },
+    axis_varnames={
+        "M": "X",
+        "N": "Y",
+        "LAYER": "Z",
+        "time": "T",
+    },
+)
 
-_DELFT3D_X_VARNAMES_MAPPING: dict[str, str] = {
-    "XZETA": "lon",
-    "YZETA": "lat",
-    "SIGMA_C": "depth",
-    "TIME": "time",
-}
-
-_DELFT3D_X_AXIS_VARNAMES: dict[str, XgcmAxisDirection] = {
-    "M": "X",
-    "N": "Y",
-    "LAYER": "Z",
-    "time": "T",
-}
-
-
-_CROCO_EXPECTED_COORDS: list[tuple[str, _Status]] = [
-    (name, _Status.REQUIRED) for name in ["x_rho", "y_rho", "s_w", "time"]
-]
-
-_CROCO_VARNAMES_MAPPING: dict[str, str] = {
-    "x_rho": "lon",
-    "y_rho": "lat",
-    "s_w": "depth",
-}
+# Known vertical dimension names of UGRID models, as {"interface": ..., "center": ...}
+_FESOM2_VERTICAL_DIMS = {"interface": "nz", "center": "nz1"}
+_ICON_VERTICAL_DIMS = {"interface": "depth_2", "center": "depth"}
 
 
 def _pick_expected_coords(coords: xr.Dataset, expected_coord_names: list[tuple[str, _Status]]) -> xr.Dataset:
@@ -164,21 +189,11 @@ def _pick_expected_coords(coords: xr.Dataset, expected_coord_names: list[tuple[s
     return xr.Dataset(coords_to_use)
 
 
-def _maybe_bring_other_depths_to_depth(ds: xr.Dataset):
+def _rename_nemo_depth_dims(ds: xr.Dataset) -> xr.Dataset:
     for var in ds.data_vars:
-        for old_depth, target in [
-            ("depthu", "depth_center"),
-            ("depthv", "depth_center"),
-            ("deptht", "depth_center"),
-            ("depthw", "depth"),
-        ]:
+        for old_depth, target in _NEMO_DEPTH_DIM_RENAMES.items():
             if old_depth in ds[var].dims:
                 ds[var] = ds[var].rename({old_depth: target})
-
-    if "depth" not in ds.dims:
-        logger.info("No depth dimension found in your dataset. Assuming no depth (i.e., surface data).", stacklevel=1)
-        ds = ds.expand_dims({"depth": [0]})
-        ds["depth"] = xr.DataArray([0], dims=["depth"])
     return ds
 
 
@@ -238,16 +253,6 @@ def _set_axis_attrs(ds: xr.Dataset, dim_axis: dict[str, XgcmAxisDirection]):
     return ds
 
 
-def _ds_rename_using_standard_names(ds: xr.Dataset | ux.UxDataset, name_dict: dict[str, str]) -> xr.Dataset:
-    for standard_name, rename_to in name_dict.items():
-        name = ds.cf[standard_name].name
-        ds = ds.rename({name: rename_to})
-        logger.info(
-            f"cf_xarray found variable {name!r} with CF standard name {standard_name!r} in dataset, renamed it to {rename_to!r} for Parcels simulation."
-        )
-    return ds
-
-
 def _maybe_convert_time_from_float_to_timedelta(ds: xr.Dataset) -> xr.Dataset:
     if "time" in ds.coords:
         if np.issubdtype(ds["time"].data.dtype, np.floating):
@@ -283,59 +288,53 @@ def _maybe_swap_depth_direction(ds: xr.Dataset) -> xr.Dataset:
 
 def _maybe_expand_depth_dimension(ds: xr.Dataset) -> xr.Dataset:
     if "depth" not in ds.dims:
-        ds = ds.expand_dims(dim={"depth": [0]}, axis=1)
-        logger.info("No depth dimension found in dataset. Added a singleton depth dimension.")
+        logger.info(
+            "No depth dimension found in dataset. Assuming surface data and adding a singleton depth dimension."
+        )
+        ds = ds.expand_dims(depth=[0]).transpose("time", "depth", ..., missing_dims="ignore")
     return ds
 
 
-# TODO is this function still needed, now that we require users to provide field names explicitly?
-def _discover_U_and_V(ds: xr.Dataset, cf_standard_names_fallbacks) -> xr.Dataset:
-    # Assumes that the dataset has U and V data
-
-    if "W" not in ds:
-        for cf_standard_name_W in cf_standard_names_fallbacks["W"]:
-            if cf_standard_name_W in ds.cf.standard_names:
-                ds = _ds_rename_using_standard_names(ds, {cf_standard_name_W: "W"})
-                break
-
-    if "U" in ds and "V" in ds:
-        return ds  # U and V already present
-    elif "U" in ds or "V" in ds:
-        raise ValueError(
-            "Dataset has only one of the two variables 'U' and 'V'. Please rename the appropriate variable in your dataset to have both 'U' and 'V' for Parcels simulation."
-        )
-
-    for cf_standard_name_U, cf_standard_name_V in cf_standard_names_fallbacks["UV"]:
-        if cf_standard_name_U in ds.cf.standard_names:
-            if cf_standard_name_V not in ds.cf.standard_names:
+def _normalize_fields(fields: dict[str, xr.Dataset | xr.DataArray]) -> dict[str, xr.DataArray]:
+    """Return each field as a DataArray named after its key in ``fields``."""
+    normalized = {}
+    for name, field in fields.items():
+        if isinstance(field, xr.Dataset):
+            # Convenience for model output with one dataset per grid (e.g., NEMO's U and V files) where the
+            # variable already has the Parcels name: {"U": ds_u} selects ds_u["U"]. Other variables are dropped.
+            if name not in field.data_vars:
                 raise ValueError(
-                    f"Dataset has variable with CF standard name {cf_standard_name_U!r}, "
-                    f"but not the matching variable with CF standard name {cf_standard_name_V!r}. "
-                    "Please rename the appropriate variables in your dataset to have both 'U' and 'V' for Parcels simulation."
+                    f"fields[{name!r}] is a Dataset without a variable named {name!r} (it has variables "
+                    f"{list(field.data_vars)}). Either rename the variable in the Dataset to {name!r}, or pass "
+                    f"the DataArray instead (e.g., fields={{{name!r}: ds['<variable name>']}})."
                 )
+            normalized[name] = field[name]
+            # TODO: logging message, warn if multiple fields are in this dataset
         else:
-            continue
+            normalized[name] = field.rename(name)
+    return normalized
 
-        ds = _ds_rename_using_standard_names(ds, {cf_standard_name_U: "U", cf_standard_name_V: "V"})
-        break
+
+def _flip_w_to_positive_down(ds: xr.Dataset) -> xr.Dataset:
+    """Negate W to convert from up positive to down positive (as that's the direction of positive z)."""
+    if "W" in ds.data_vars:
+        ds["W"] = ds["W"].copy(data=-ds["W"].data)  # new array, so that the caller's data is left untouched
     return ds
-
-
-def _assert_no_grid_metadata(ds: xr.Dataset) -> None:
-    if "grid" in ds.cf.cf_roles:
-        raise ValueError(
-            "Dataset already has a 'grid' variable (according to cf_roles). Didn't expect there to be grid metadata on this dataset - please open an issue with more information about your dataset."
-        )
 
 
 def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Dataset):
-    # TODO: Update docstring
-    """Create a FieldSet from a xarray.Dataset from NEMO netcdf files.
+    """Create an sgrid-compliant xarray.Dataset from a dataset of NEMO netcdf files.
 
     Parameters
     ----------
-    ds : xarray.Dataset
-        xarray.Dataset as obtained from a set of NEMO netcdf files.
+    fields : dict[str, xr.Dataset | xr.DataArray]
+        Dictionary mapping Parcels field names (e.g., "U", "V") to xarray.DataArray objects as obtained from a
+        set of NEMO netcdf files, e.g. ``{"U": ds["uo"]}``. An xarray.Dataset can be given instead of a
+        DataArray if it contains a variable with the field name, which is then used (e.g., ``{"U": ds_u}`` uses
+        ``ds_u["U"]``).
+    coords : xarray.Dataset
+        xarray.Dataset containing coordinate variables (e.g., the NEMO mesh mask). Must contain
+        ``glamf`` and ``gphif``, and can optionally contain ``depthw``.
 
     Returns
     -------
@@ -350,16 +349,10 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
     If you encounter issues with your specific NEMO dataset, please open an issue on the Parcels GitHub repository with details about your dataset.
 
     """
-    fields = fields.copy()
-    coords = _pick_expected_coords(coords, _NEMO_EXPECTED_COORDS)
+    coords = _pick_expected_coords(coords, _NEMO.expected_coords)
+    field_das = _normalize_fields(fields)
 
-    for name, field_da in fields.items():
-        if isinstance(field_da, xr.Dataset):
-            field_da = field_da[name]
-            # TODO: logging message, warn if multiple fields are in this dataset
-        else:
-            field_da = field_da.rename(name)
-
+    for name, field_da in field_das.items():
         match name:
             case "U":
                 field_da = field_da.rename({"y": "y_center"})
@@ -368,7 +361,7 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
             case _:
                 pass
         field_da = field_da.reset_coords(drop=True)
-        fields[name] = field_da
+        field_das[name] = field_da
 
     if "time" in coords.dims:
         if coords.sizes["time"] != 1:
@@ -384,14 +377,17 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
                 coords = coords.isel({dim: 0})
     # if len(coords.dims) != 2: #! This should really be looking at the dimensionality of the lons and lats arrays. Currently having 2D lon lat and 1D depth triggers this `if` clause
     #     raise ValueError("Expected coordinates to be 2 dimensional")
-    ds = xr.merge(list(fields.values()) + [coords])
-    ds = _maybe_rename_variables(ds, _NEMO_VARNAMES_MAPPING)
-    ds = _maybe_bring_other_depths_to_depth(ds)
+    ds = xr.merge(list(field_das.values()) + [coords])
+    ds.attrs.clear()  # Clear global attributes from the merging
+
+    ds = _maybe_rename_variables(ds, _NEMO.varnames_mapping)
+    ds = _rename_nemo_depth_dims(ds)
+    ds = _maybe_expand_depth_dimension(ds)
     ds = _drop_unused_dimensions_and_coords(ds, _NEMO_DIMENSION_COORD_NAMES)
     ds = _assign_dims_as_coords(ds, _NEMO_DIMENSION_COORD_NAMES)
     ds = _set_coords(ds, _NEMO_DIMENSION_COORD_NAMES)
     ds = _maybe_remove_depth_from_lonlat(ds)
-    ds = _set_axis_attrs(ds, _NEMO_AXIS_VARNAMES)
+    ds = _set_axis_attrs(ds, _NEMO.axis_varnames)
 
     expected_axes = set("XYZT")  # TODO: Update after we have support for 2D spatial fields
     if missing_axes := (expected_axes - set(ds.cf.axes)):
@@ -402,14 +398,11 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
             "HINT: Add xarray metadata attribute 'axis' to dimension - e.g., ds['lat'].attrs['axis'] = 'Y'"
         )
 
-    if "W" in ds.data_vars:
-        # Negate W to convert from up positive to down positive (as that's the direction of positive z)
-        ds["W"].data *= -1
+    ds = _flip_w_to_positive_down(ds)
 
-    _assert_no_grid_metadata(ds)
-    ds["grid"] = xr.DataArray(
-        0,
-        attrs=sgrid.SGrid2DMetadata(
+    ds = sgrid._attach_sgrid_metadata(
+        ds,
+        sgrid.SGrid2DMetadata(
             cf_role="grid_topology",
             topology_dimension=2,
             node_dimensions=("x", "y"),
@@ -419,7 +412,7 @@ def nemo_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
                 sgrid.FaceNodePadding("y_center", "y", sgrid.Padding.LOW),
             ),
             vertical_dimensions=(sgrid.FaceNodePadding("depth_center", "depth", sgrid.Padding.HIGH),),
-        ).to_attrs(),
+        ),
     )
 
     # NEMO models are always in degrees
@@ -437,8 +430,11 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
     Parameters
     ----------
     fields : dict[str, xr.Dataset | xr.DataArray]
-        Velocity fields keyed by Parcels name, e.g. ``{"U": ds["ssu"], "V": ds["ssv"]}``.
-        U must be on ``(yh, xq)`` and V on ``(yq, xh)``. The time coordinate must be in ascending order.
+        Dictionary mapping Parcels field names (e.g., "U", "V") to xarray.DataArray objects as obtained from a
+        set of MOM6 netcdf files, e.g. ``{"U": ds["ssu"], "V": ds["ssv"]}``. An xarray.Dataset can be given
+        instead of a DataArray if it contains a variable with the field name, which is then used (e.g.,
+        ``{"U": ds_u}`` uses ``ds_u["U"]``). U must be on ``(yh, xq)`` and V on ``(yq, xh)``. The time
+        coordinate must be in ascending order.
     coords : xarray.Dataset
         MOM6 static grid dataset (e.g. ``ocean_static.nc``) containing ``geolon_c`` and ``geolat_c``
         on ``(yq, xq)``.
@@ -461,19 +457,11 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
 
     Currently only 2D (surface) velocity fields are supported.
     """
-    fields = fields.copy()
-    coords = _pick_expected_coords(coords, _MOM6_EXPECTED_COORDS)
+    coords = _pick_expected_coords(coords, _MOM6.expected_coords)
+    field_das = {name: da.reset_coords(drop=True) for name, da in _normalize_fields(fields).items()}
 
-    for name, field_da in fields.items():
-        if isinstance(field_da, xr.Dataset):
-            field_da = field_da[name]
-        else:
-            field_da = field_da.rename(name)
-
-        field_da = field_da.reset_coords(drop=True)
-        fields[name] = field_da
-
-    ds = xr.merge(list(fields.values()) + [coords])
+    ds = xr.merge(list(field_das.values()) + [coords])
+    ds.attrs.clear()  # Clear global attributes from the merging
 
     # Ensure only 2D (surface) + time velocity fields are present
     for var_name, da in ds.data_vars.items():
@@ -485,7 +473,7 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
     ds = _drop_unused_dimensions_and_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
     ds = _assign_dims_as_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
     ds = _set_coords(ds, _MOM6_DIMENSION_COORD_NAMES)
-    ds = _set_axis_attrs(ds, _MOM6_AXIS_VARNAMES)
+    ds = _set_axis_attrs(ds, _MOM6.axis_varnames)
 
     for node, face in [("xq", "xh"), ("yq", "yh")]:
         if ds.sizes[node] - ds.sizes[face] not in (0, 1):
@@ -498,10 +486,9 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
     pad_x = sgrid.Padding.NONE if ds.sizes["xq"] == ds.sizes["xh"] + 1 else sgrid.Padding.LOW
     pad_y = sgrid.Padding.NONE if ds.sizes["yq"] == ds.sizes["yh"] + 1 else sgrid.Padding.LOW
 
-    _assert_no_grid_metadata(ds)
-    ds["grid"] = xr.DataArray(
-        0,
-        attrs=sgrid.SGrid2DMetadata(
+    ds = sgrid._attach_sgrid_metadata(
+        ds,
+        sgrid.SGrid2DMetadata(
             cf_role="grid_topology",
             topology_dimension=2,
             node_dimensions=("xq", "yq"),
@@ -510,7 +497,7 @@ def mom6_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.Da
                 sgrid.FaceNodePadding("xh", "xq", pad_x),
                 sgrid.FaceNodePadding("yh", "yq", pad_y),
             ),
-        ).to_attrs(),
+        ),
     )
 
     # MOM6 geographic coordinates are always in degrees
@@ -528,8 +515,11 @@ def mitgcm_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.
     Parameters
     ----------
     fields : dict[str, xr.Dataset | xr.DataArray]
-        Dictionary of xarray.DataArray objects as obtained from a set of MITgcm netcdf files.
-    coords : xarray.Dataset, optional
+        Dictionary mapping Parcels field names (e.g., "U", "V") to xarray.DataArray objects as obtained from a
+        set of MITgcm netcdf files, e.g. ``{"U": ds["UVEL"]}``. An xarray.Dataset can be given instead of a
+        DataArray if it contains a variable with the field name, which is then used (e.g., ``{"U": ds_u}`` uses
+        ``ds_u["U"]``).
+    coords : xarray.Dataset
         xarray.Dataset containing coordinate variables.
 
     Returns
@@ -542,29 +532,20 @@ def mitgcm_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.
     See the MITgcm tutorial for more information on how to use MITgcm model outputs in Parcels
 
     """
-    fields = fields.copy()
+    field_das = _normalize_fields(fields)
 
-    for name, field_da in fields.items():
-        if isinstance(field_da, xr.Dataset):
-            field_da = field_da[name]
-            # TODO: logging message, warn if multiple fields are in this dataset
-        else:
-            field_da = field_da.rename(name)
-        fields[name] = field_da
+    coords = _pick_expected_coords(coords, _MITGCM.expected_coords)
 
-    coords = _pick_expected_coords(coords, _MITGCM_EXPECTED_COORDS)
-
-    ds = xr.merge(list(fields.values()) + [coords], compat="override")
+    ds = xr.merge(list(field_das.values()) + [coords], compat="override")
     ds.attrs.clear()  # Clear global attributes from the merging
 
-    ds = _maybe_rename_variables(ds, _MITGCM_VARNAMES_MAPPING)
-    ds = _set_axis_attrs(ds, _MITGCM_AXIS_VARNAMES)
+    ds = _maybe_rename_variables(ds, _MITGCM.varnames_mapping)
+    ds = _set_axis_attrs(ds, _MITGCM.axis_varnames)
     ds = _maybe_swap_depth_direction(ds)
 
-    _assert_no_grid_metadata(ds)
-    ds["grid"] = xr.DataArray(
-        0,
-        attrs=sgrid.SGrid2DMetadata(
+    ds = sgrid._attach_sgrid_metadata(
+        ds,
+        sgrid.SGrid2DMetadata(
             cf_role="grid_topology",
             topology_dimension=2,
             node_dimensions=("lon", "lat"),
@@ -574,7 +555,7 @@ def mitgcm_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.
                 sgrid.FaceNodePadding("YC", "lat", sgrid.Padding.HIGH),
             ),
             vertical_dimensions=(sgrid.FaceNodePadding("depth", "depth", sgrid.Padding.HIGH),),
-        ).to_attrs(),
+        ),
     )
 
     return ds
@@ -586,8 +567,11 @@ def croco_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.D
     Parameters
     ----------
     fields : dict[str, xr.Dataset | xr.DataArray]
-        Dictionary of xarray.DataArray objects as obtained from a set of Croco netcdf files.
-    coords : xarray.Dataset, optional
+        Dictionary mapping Parcels field names (e.g., "U", "V") to xarray.DataArray objects as obtained from a
+        set of Croco netcdf files, e.g. ``{"U": ds["u"]}``. An xarray.Dataset can be given instead of a
+        DataArray if it contains a variable with the field name, which is then used (e.g., ``{"U": ds_u}`` uses
+        ``ds_u["U"]``).
+    coords : xarray.Dataset
         xarray.Dataset containing coordinate variables.
 
     Returns
@@ -600,28 +584,19 @@ def croco_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.D
     See the CROCO 3D tutorial for more information on how to use CROCO model outputs in Parcels
 
     """
-    fields = fields.copy()
+    field_das = _normalize_fields(fields)
 
-    for name, field_da in fields.items():
-        if isinstance(field_da, xr.Dataset):
-            field_da = field_da[name]
-            # TODO: logging message, warn if multiple fields are in this dataset
-        else:
-            field_da = field_da.rename(name)
-        fields[name] = field_da
+    coords = _pick_expected_coords(coords, _CROCO.expected_coords)
 
-    coords = _pick_expected_coords(coords, _CROCO_EXPECTED_COORDS)
-
-    ds = xr.merge(list(fields.values()) + [coords])
+    ds = xr.merge(list(field_das.values()) + [coords])
     ds.attrs.clear()  # Clear global attributes from the merging
 
-    ds = _maybe_rename_variables(ds, _CROCO_VARNAMES_MAPPING)
+    ds = _maybe_rename_variables(ds, _CROCO.varnames_mapping)
     ds = _maybe_convert_time_from_float_to_timedelta(ds)
 
-    _assert_no_grid_metadata(ds)
-    ds["grid"] = xr.DataArray(
-        0,
-        attrs=sgrid.SGrid2DMetadata(
+    ds = sgrid._attach_sgrid_metadata(
+        ds,
+        sgrid.SGrid2DMetadata(
             cf_role="grid_topology",
             topology_dimension=2,
             node_dimensions=("lon", "lat"),
@@ -631,7 +606,7 @@ def croco_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr.D
                 sgrid.FaceNodePadding("eta_v", "eta_rho", sgrid.Padding.NONE),
             ),
             vertical_dimensions=(sgrid.FaceNodePadding("s_rho", "depth", sgrid.Padding.NONE),),
-        ).to_attrs(),
+        ),
     )
 
     return ds
@@ -645,7 +620,10 @@ def copernicusmarine_to_sgrid(
     Parameters
     ----------
     fields : dict[str, xr.Dataset | xr.DataArray]
-        Dictionary of xarray.DataArray objects as obtained from a set of Copernicus Marine netcdf files.
+        Dictionary mapping Parcels field names (e.g., "U", "V") to xarray.DataArray objects as obtained from a
+        set of Copernicus Marine netcdf files, e.g. ``{"U": ds["uo"]}``. An xarray.Dataset can be given instead of a
+        DataArray if it contains a variable with the field name, which is then used (e.g., ``{"U": ds_u}`` uses
+        ``ds_u["U"]``).
     coords : xarray.Dataset, optional
         xarray.Dataset containing coordinate variables. By default these are time, depth, latitude, longitude
 
@@ -661,30 +639,20 @@ def copernicusmarine_to_sgrid(
     You can use indexing and slicing to select a subset of the data before passing it to this function.
 
     """
-    fields = fields.copy()
+    field_das = _normalize_fields(fields)
 
-    for name, field_da in fields.items():
-        if isinstance(field_da, xr.Dataset):
-            field_da = field_da[name]
-            # TODO: logging message, warn if multiple fields are in this dataset
-        else:
-            field_da = field_da.rename(name)
-        fields[name] = field_da
-
-    ds = xr.merge(list(fields.values()) + ([coords] if coords is not None else []))
+    ds = xr.merge(list(field_das.values()) + ([coords] if coords is not None else []))
     ds.attrs.clear()  # Clear global attributes from the merging
 
     ds = _maybe_rename_coords(ds, _COPERNICUS_MARINE_AXIS_VARNAMES)
     ds = _maybe_expand_depth_dimension(ds)
 
-    if "W" in ds.data_vars:
-        # Negate W to convert from up positive to down positive (as that's the direction of positive z)
-        ds["W"].data *= -1
+    ds = _flip_w_to_positive_down(ds)
 
-    _assert_no_grid_metadata(ds)
-    ds["grid"] = xr.DataArray(
-        0,
-        attrs=sgrid.SGrid2DMetadata(  # use dummy *_center dimensions - this is A grid data (all defined on nodes)
+    # use dummy *_center dimensions - this is A grid data (all defined on nodes)
+    ds = sgrid._attach_sgrid_metadata(
+        ds,
+        sgrid.SGrid2DMetadata(
             cf_role="grid_topology",
             topology_dimension=2,
             node_dimensions=("lon", "lat"),
@@ -694,7 +662,7 @@ def copernicusmarine_to_sgrid(
                 sgrid.FaceNodePadding("y_center", "lat", sgrid.Padding.LOW),
             ),
             vertical_dimensions=(sgrid.FaceNodePadding("depth_center", "depth", sgrid.Padding.LOW),),
-        ).to_attrs(),
+        ),
     )
 
     return ds
@@ -706,7 +674,10 @@ def delft3d_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr
     Parameters
     ----------
     fields : dict[str, xr.Dataset | xr.DataArray]
-        Dictionary of xarray.DataArray objects as obtained from a set of structured-grid Delft3D netcdf files.
+        Dictionary mapping Parcels field names (e.g., "U", "V") to xarray.DataArray objects as obtained from a
+        set of structured-grid Delft3D netcdf files, e.g. ``{"U": ds["VELU"]}``. An xarray.Dataset can be given
+        instead of a DataArray if it contains a variable with the field name, which is then used (e.g.,
+        ``{"U": ds_u}`` uses ``ds_u["U"]``).
     coords : xarray.Dataset
         xarray.Dataset containing coordinate variables.
 
@@ -724,26 +695,19 @@ def delft3d_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr
         stacklevel=2,
     )
 
-    fields = fields.copy()
-    coords = _pick_expected_coords(coords, _DELFT3D_X_EXPECTED_COORDS)
+    coords = _pick_expected_coords(coords, _DELFT3D_X.expected_coords)
+    field_das = _normalize_fields(fields)
 
-    for name, field_da in fields.items():
-        if isinstance(field_da, xr.Dataset):
-            field_da = field_da[name]
-            # TODO: logging message, warn if multiple fields are in this dataset
-        else:
-            field_da = field_da.rename(name)
-        fields[name] = field_da
+    ds = xr.merge(list(field_das.values()) + [coords], compat="override")
+    ds.attrs.clear()  # Clear global attributes from the merging
 
-    ds = xr.merge(list(fields.values()) + [coords], compat="override")
+    ds = _maybe_rename_variables(ds, _DELFT3D_X.varnames_mapping)
+    ds = _set_coords(ds, _DELFT3D_X.axis_varnames.keys())
+    ds = _set_axis_attrs(ds, _DELFT3D_X.axis_varnames)
 
-    ds = _maybe_rename_variables(ds, _DELFT3D_X_VARNAMES_MAPPING)
-    ds = _set_coords(ds, _DELFT3D_X_AXIS_VARNAMES.keys())
-    ds = _set_axis_attrs(ds, _DELFT3D_X_AXIS_VARNAMES)
-
-    ds["grid"] = xr.DataArray(
-        0,
-        attrs=sgrid.SGrid2DMetadata(
+    ds = sgrid._attach_sgrid_metadata(
+        ds,
+        sgrid.SGrid2DMetadata(
             cf_role="grid_topology",
             topology_dimension=2,
             node_dimensions=("M", "N"),
@@ -753,15 +717,10 @@ def delft3d_to_sgrid(*, fields: dict[str, xr.Dataset | xr.DataArray], coords: xr
                 sgrid.FaceNodePadding("Y", "N", sgrid.Padding.LOW),
             ),
             vertical_dimensions=(sgrid.FaceNodePadding("Z", "LAYER", sgrid.Padding.HIGH),),
-        ).to_attrs(),
+        ),
     )
 
     return ds
-
-
-# Known vertical dimension mappings by model
-_FESOM2_VERTICAL_DIMS = {"interface": "nz", "center": "nz1"}
-_ICON_VERTICAL_DIMS = {"interface": "depth_2", "center": "depth"}
 
 
 def _detect_vertical_coordinates(
