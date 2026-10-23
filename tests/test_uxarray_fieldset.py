@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 import uxarray as ux
 
-import parcels._datasets.remote as _parcels_remote
 import parcels.tutorial
 from parcels import (
     FieldSet,
@@ -23,15 +22,13 @@ from tests.utils import create_uxgrid_from_triangulation
 
 @pytest.fixture
 def ds_fesom_channel() -> ux.UxDataset:
-    # Download FESOM files via the new tutorial API
-    parcels.tutorial.open_dataset("FESOM_periodic_channel/fesom_channel")
-    # uxarray requires file paths; access the downloaded files from the pooch cache
-    _fesom_dir = Path(_parcels_remote._DATA_HOME) / "data" / "FESOM_periodic_channel"
-    grid_path = str(_fesom_dir / "fesom_channel.nc")
+    files = parcels.tutorial.get_dataset_files("FESOM_periodic_channel/fesom_channel")
+    fesom_dir = Path(files[0]).parent
+    grid_path = str(fesom_dir / "fesom_channel.nc")
     data_path = [
-        str(_fesom_dir / "u.fesom_channel.nc"),
-        str(_fesom_dir / "v.fesom_channel.nc"),
-        str(_fesom_dir / "w.fesom_channel.nc"),
+        str(fesom_dir / "u.fesom_channel.nc"),
+        str(fesom_dir / "v.fesom_channel.nc"),
+        str(fesom_dir / "w.fesom_channel.nc"),
     ]
     ds = ux.open_mfdataset(grid_path, data_path).rename_vars({"u": "U", "v": "V", "w": "W"})
     ds = convert.fesom_to_ugrid(ds)

@@ -165,6 +165,7 @@ mypy = "*"
 lxml = "*" # in CI
 types-tqdm = "*"
 pandas-stubs = "*"
+scipy-stubs = "*"
 pyarrow-stubs = "*"
 
 [feature.typing.tasks]

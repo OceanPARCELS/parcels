@@ -24,10 +24,24 @@ def test_open_dataset_non_existing():
 
 
 @pytest.mark.flaky
-@pytest.mark.parametrize("name", remote.list_remote_datasets())
+@pytest.mark.parametrize("name", remote.list_remote_datasets(scope="open"))
 def test_open_dataset(name):
     ds = remote.open_remote_dataset(name)
     assert isinstance(ds, xr.Dataset)
+
+
+@pytest.mark.flaky
+@pytest.mark.parametrize("name", remote.list_remote_datasets(scope="download_only"))
+def test_download_dataset(name):
+    files = remote.get_remote_dataset(name)
+    assert all(isinstance(f, str) for f in files)
+
+
+@pytest.mark.flaky
+@pytest.mark.parametrize("name", ["SWASH_data/data"])
+def test_error_on_download_scope(name):
+    with pytest.raises(ValueError, match="does not have Scope 'open'"):
+        remote.open_remote_dataset(name)
 
 
 @pytest.mark.parametrize("name", remote.list_remote_datasets())

@@ -17,6 +17,8 @@ __all__ = [
     "AdvectionRK45",
 ]
 
+LEGACY_STAGE1 = False  # reproduce original: st age 1 particle velocity = fluid velocity for Maxey-Riley kernels
+
 
 def rhs_uv(fieldset, t, z, y, x, particles):
     return fieldset.UV[t, z, y, x, particles]
@@ -134,6 +136,84 @@ def AdvectionRK45(particles, fieldset):  # pragma: no cover
         particles.dt,
     )
     particles.state = np.where(repeat_particles, StatusCode.Repeat, particles.state)
+
+
+def fluid_state(fieldset, t0, dt, t, z, y, x, particles):
+    DX, DY, DZ = fieldset.dx, fieldset.dy, fieldset.dz
+    f = fieldset.UVW[t, z, y, x, particles]  # boundary check happens here
+    ft1 = fieldset.UVW[t0 + dt, z, y, x]
+    ft0 = fieldset.UVW[t0, z, y, x]
+    fxp, fxm = fieldset.UVW[t, z, y, x + DX], fieldset.UVW[t, z, y, x - DX]
+    fyp, fym = fieldset.UVW[t, z, y + DY, x], fieldset.UVW[t, z, y - DY, x]
+    fzp, fzm = fieldset.UVW[t, z + DZ, y, x], fieldset.UVW[t, z - DZ, y, x]
+    uf, vf, wf = f
+    D = tuple(
+        (ft1[i] - ft0[i]) / dt
+        + uf * (fxp[i] - fxm[i]) / (2 * DX)
+        + vf * (fyp[i] - fym[i]) / (2 * DY)
+        + wf * (fzp[i] - fzm[i]) / (2 * DZ)
+        for i in range(3)
+    )
+    return f, D
+
+
+def rhs_DiBene(fieldset, t0, dt, t, z, y, x, vp, particles):
+    G = 9.81
+    nu = 1e-6
+    RHO_F = 1000.0  # fluid density (use ~1025 for seawater)
+    Cm = 0.5  # added mass coefficient (0.5 for spheres)
+    (uf, vf, wf), (Du, Dv, Dw) = fluid_state(fieldset, t0, dt, t, z, y, x, particles)
+    up, vp_, wp = vp
+    du, dv, dw = uf - up, vf - vp_, wf - wp
+
+    Rep = np.sqrt(du**2 + dv**2 + dw**2) * particles.diaP / nu
+    mass_ratio = np.where(z < fieldset.surface, particles.rho / RHO_F, 1.0)
+    denom = mass_ratio + Cm
+
+    # Schiller-Naumann: CD*Rep = 24*(1 + 0.15 Rep^0.687), so no 1/Rep
+    k = 18.0 * nu / particles.diaP**2 * (1.0 + 0.15 * Rep**0.687) / denom  # 1/s
+    am = (1 + Cm) / denom
+    buoy = (mass_ratio - 1.0) / denom * G
+
+    return (
+        am * Du + k * du,
+        am * Dv + k * dv,
+        am * Dw + k * dw - buoy,
+    )
+
+
+def DiBeneAdvectionRK4_3D(particles, fieldset):
+    dt = particles.dt
+    t0, x0, y0, z0 = particles.t, particles.x, particles.y, particles.z
+    v0 = (particles.up, particles.vp, particles.wp)
+
+    kx, kv = [], []
+    x, y, z, t = x0, y0, z0, t0
+    v = tuple(fieldset.UVW[particles]) if LEGACY_STAGE1 else v0  # stage 1 only
+    for c in (0.0, 0.5, 0.5, 1.0):
+        if kx:
+            x = x0 + c * dt * kx[-1][0]
+            y = y0 + c * dt * kx[-1][1]
+            z = z0 + c * dt * kx[-1][2]
+            # z = np.minimum(z0 + c * dt * kx[-1][2], fieldset.surface)
+            v = tuple(v0[i] + c * dt * kv[-1][i] for i in range(3))
+            t = t0 + c * dt
+        kx.append(v)
+        kv.append(rhs_DiBene(fieldset, t0, dt, t, z, y, x, v, particles))
+
+    w = (1, 2, 2, 1)
+    dvel = [sum(wi * k[i] for wi, k in zip(w, kv, strict=True)) * dt / 6.0 for i in range(3)]
+    dpos = [sum(wi * k[i] for wi, k in zip(w, kx, strict=True)) * dt / 6.0 for i in range(3)]
+
+    # stop at the surface and kill vertical velocity
+    at_surface = (z0 + dpos[2]) >= fieldset.surface
+    particles.dz += np.where(at_surface, fieldset.surface - z0, dpos[2])
+    particles.wp = np.where(at_surface, 0.0, particles.wp + dvel[2])
+
+    particles.up += dvel[0]
+    particles.vp += dvel[1]
+    particles.dx += dpos[0]
+    particles.dy += dpos[1]
 
 
 def AdvectionAnalytical(particles, fieldset):  # pragma: no cover
