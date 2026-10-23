@@ -207,7 +207,7 @@ def test_field_constant_in_time():
 def test_field_eval_out_of_bounds_structured(field_name, location, expected):
     """Test that Field.eval returns IndexError when queried outside the grid boundaries."""
     # eval outside of bounds should return 0.0
-    ds = simple_UV_dataset(mesh="flat")
+    ds = simple_UV_dataset(mesh_str="flat")
     fieldset = FieldSet.from_sgrid_conventions(ds)
     fieldset.U.data[:] = 1.0
     fieldset.V.data[:] = 2.0

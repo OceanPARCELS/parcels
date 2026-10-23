@@ -189,7 +189,7 @@ def test_invdistland_interpolation(field, interpolator, t, z, y, x, expected):
 @pytest.mark.parametrize("mesh", [SphericalMesh(), FlatMesh()])
 def test_interpolation_mesh_type(mesh, npart=10):
     mesh_str = "spherical" if mesh.is_spherical() else "flat"
-    ds = simple_UV_dataset(mesh=mesh_str)
+    ds = simple_UV_dataset(mesh_str=mesh_str)
     ds["U"].data[:] = 1.0
     fieldset = FieldSet.from_sgrid_conventions(ds, mesh=mesh)
 

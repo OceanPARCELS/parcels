@@ -125,7 +125,7 @@ def test_field_without_depth_identical_across_backends(backend: BackendT):
     """Fields without a depth dimension get a size-1 ``mockZ`` dimension, which must
     also be indexable by every backend (gh-2897).
     """
-    ds = simple_UV_dataset(n_times=10, nz=1, ny=20, nx=20, mesh="flat").isel(depth=0, drop=True)
+    ds = simple_UV_dataset(n_times=10, nz=1, ny=20, nx=20, mesh_str="flat").isel(depth=0, drop=True)
     ds["U"].data[:] = 1.0 + ds["XG"].values / 20  # spatially varying, so the corners matter
     ds["V"].data[:] = 0.5
 

@@ -56,7 +56,7 @@ def test_advection_uses_custom_radius(mesh, deg2m, npart=10):
 
 
 def test_advection_flat_mesh(npart=10):
-    ds = simple_UV_dataset(mesh="flat")
+    ds = simple_UV_dataset(mesh_str="flat")
     ds["U"].data[:] = 1.0
     fieldset = FieldSet.from_sgrid_conventions(ds)
 

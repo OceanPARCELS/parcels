@@ -76,7 +76,7 @@ def test_windowed_isel_backward_clock_loads_once_and_evicts():
 @pytest.mark.parametrize(
     "fset_convention, ds, mesh",
     [
-        (FieldSet.from_sgrid_conventions, simple_UV_dataset(mesh="flat"), FlatMesh()),
+        (FieldSet.from_sgrid_conventions, simple_UV_dataset(mesh_str="flat"), FlatMesh()),
         (FieldSet.from_ugrid_conventions, _ux_constant_flow_face_centered_2D(), FlatMesh()),
     ],
     ids=["structured", "unstructured"],
@@ -104,7 +104,7 @@ def test_windowed_arrays_wraps_dask_but_not_numpy(fset_convention: callable, ds:
 @pytest.mark.parametrize(
     "fset_convention, ds, mesh",
     [
-        (FieldSet.from_sgrid_conventions, simple_UV_dataset(mesh="flat"), FlatMesh()),
+        (FieldSet.from_sgrid_conventions, simple_UV_dataset(mesh_str="flat"), FlatMesh()),
         (FieldSet.from_ugrid_conventions, _ux_constant_flow_face_centered_2D(), FlatMesh()),
     ],
     ids=["structured", "unstructured"],
@@ -155,14 +155,14 @@ def test_maybe_windowed_passthrough_for_non_time_leading():
     assert maybe_windowed(da_no_time) is da_no_time  # not wrapped (no leading time dim)
 
 
-@pytest.mark.parametrize("mesh", ["flat", "spherical"])
+@pytest.mark.parametrize("mesh_str", ["flat", "spherical"])
 @pytest.mark.parametrize("dt_minutes", [15, -15], ids=["forward", "backward"])
-def test_dask_advection_matches_numpy_on_structured_grids(mesh, dt_minutes):
+def test_dask_advection_matches_numpy_on_structured_grids(mesh_str, dt_minutes):
     """An identical advection must give identical trajectories whether the field
     is numpy-backed or dask-backed (windowed) -- for both forward (dt > 0) and
     backward (dt < 0) integration on structured grids.
     """
-    ds = simple_UV_dataset(mesh=mesh)
+    ds = simple_UV_dataset(mesh_str=mesh_str)
     ds["U"].data[:] = 1.0  # steady zonal flow -> in-bounds, deterministic
 
     def run(chunked):

@@ -44,7 +44,7 @@ def fieldset_no_time_interval() -> FieldSet:
 
 @pytest.fixture
 def zonal_flow_fieldset() -> FieldSet:
-    ds = simple_UV_dataset(mesh="flat")
+    ds = simple_UV_dataset(mesh_str="flat")
     ds["U"].data[:] = 1.0
     return FieldSet.from_sgrid_conventions(ds)
 
@@ -57,7 +57,7 @@ def time_varying_zonal_flow_fieldset() -> FieldSet:
     clock and nothing else.
     """
     nt = 25
-    ds = simple_UV_dataset(n_times=nt, nz=2, ny=6, nx=6, mesh="flat")
+    ds = simple_UV_dataset(n_times=nt, nz=2, ny=6, nx=6, mesh_str="flat")
     times = np.array([np.timedelta64(3 * i, "h") for i in range(nt)])
     ds["time"] = ("time", times, {"axis": "T"})
     u = np.cos(2 * np.pi * (times / np.timedelta64(1, "s")) / 86400.0)  # 1 m/s, 1-day period
