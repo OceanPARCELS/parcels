@@ -28,10 +28,10 @@ from parcels._sgrid.accessor import assert_metadata_ds_consistency
 from parcels.interpolators import (
     CGrid_Velocity,
     Ux_Velocity,
-    UxConstantFaceConstantZC,
-    UxConstantFaceLinearZF,
     UxConstantEdgeConstantZC,
     UxConstantEdgeLinearZF,
+    UxConstantFaceConstantZC,
+    UxConstantFaceLinearZF,
     UxLinearNodeConstantZC,
     UxLinearNodeLinearZF,
     XLinear,
