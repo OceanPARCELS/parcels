@@ -426,7 +426,13 @@ def _infer_mesh_from_sgrid_data(ds_sgrid: xr.Dataset) -> ptyping.TMesh:
     sgrid_metadata = ds_sgrid.sgrid.metadata
 
     if sgrid_metadata.node_coordinates is None:
-        # No horizontal coordinates (e.g. 0D or Z-only grids), so there is no geometry to infer from
+        horizontal_dims = [d for d in sgrid_metadata.node_dimensions[:2] if d in ds_sgrid.dims]
+        if horizontal_dims:
+            raise ValueError(
+                f"SGRID metadata has no 'node_coordinates', but the dataset has horizontal node dimensions "
+                f"{horizontal_dims}. Add 'node_coordinates' to the SGRID metadata, or pass `mesh` explicitly."
+            )
+        # No horizontal dimensions (e.g. 0D or Z-only grids), so there is no geometry to infer from
         return FlatMesh()
 
     fpoint_x, fpoint_y = sgrid_metadata.node_coordinates

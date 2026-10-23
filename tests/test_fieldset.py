@@ -15,7 +15,7 @@ import tests
 from parcels import Particle, ParticleFile, ParticleSet, Variable, convert
 from parcels._core.fieldset import FieldSet, IncompatibleMeshesException, _datetime_to_msg
 from parcels._core.mesh import SphericalMesh
-from parcels._core.model import _default_vector_field_components
+from parcels._core.model import _default_vector_field_components, _infer_mesh_from_sgrid_data
 from parcels._core.utils.time import TimeInterval
 from parcels._datasets.structured.generated import simple_UV_sigma_dataset
 from parcels._datasets.structured.generic import datasets as datasets_structured
@@ -580,6 +580,15 @@ def test_fieldset_add_4d_base_and_reduced_dims_model(spatial_axes, n_times):
     assert combined.fields["reduced_field"].grid.axes == _expected_grid_axes(reduced)
     assert combined.fields["base_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(1.0, rel=1e-9)
     assert combined.fields["reduced_field"].eval(t=0.0, z=0.5, y=0.5, x=0.5)[0] == pytest.approx(2.0, rel=1e-9)
+
+
+def test_infer_mesh_from_sgrid_data_missing_node_coordinates_raises():
+    ds = reduced_dims_dataset(frozenset("XY"), (1, 0), "field", value=1.0).copy()
+    ds["grid"].attrs.pop("node_coordinates")
+
+    assert ds.sgrid.metadata.node_coordinates is None
+    with pytest.raises(ValueError, match="no 'node_coordinates'"):
+        _infer_mesh_from_sgrid_data(ds)
 
 
 def test_fieldset_describe(fieldset_two_models: FieldSet):
