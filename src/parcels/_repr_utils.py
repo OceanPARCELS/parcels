@@ -104,7 +104,7 @@ def particleset_repr(pset: ParticleSet) -> str:
 
 def particlesetview_repr(pview: Any) -> str:
     """Return a pretty repr for ParticleSetView"""
-    time_string = "not_yet_set" if pview.time is None or np.isnan(pview.time) else f"{pview.time:f}"
+    time_string = "not_yet_set" if pview.t is None or np.isnan(pview.t) else f"{pview.t:f}"
     out = f"P[{pview.particle_id}]: time={time_string}, z={pview.z:f}, y={pview.y:f}, x={pview.x:f}"
     vars = [v.name for v in pview._pclass.variables if v.to_write is True and v.name not in ["z", "y", "x", "time"]]
     for var in vars:

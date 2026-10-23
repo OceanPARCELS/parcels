@@ -256,9 +256,9 @@ class XGrid(BaseGrid):
         assert self.sgrid_metadata.vertical_dimensions is not None
         return get_cell_count_along_dim(self._ds, self.sgrid_metadata.vertical_dimensions[0])
 
-    def localize(
-        self, position: dict[ptyping.XgridAxis, tuple[int, float]], dims: list[str]
-    ) -> dict[str, tuple[int, float]]:
+    def localise(
+        self, position: dict[ptyping.XgridAxis, dict[str, np.ndarray]], dims: list[str]
+    ) -> dict[str, dict[str, np.ndarray]]:
         """
         Uses the grid context (i.e., the staggering of the grid) to convert a position relative
         to the f-points in the grid to a position relative to the staggered grid the array
@@ -271,24 +271,28 @@ class XGrid(BaseGrid):
         Parameters
         ----------
         position : dict
-            A mapping of the axis to a tuple of (index, barycentric coordinate) for the
-            f-points in the grid.
+            A mapping of the axis to a dict with the arrays ``"index"`` and ``"bcoord"`` (barycentric
+            coordinate) for the f-points in the grid, as returned by ``search``.
         dims : list[str]
             A list of dimension names that the DataArray is defined on. This is used to determine
             the staggering of the grid and which axis each dimension corresponds to.
 
         Returns
         -------
-        dict[str, tuple[int, float]]
-            A mapping of the dimension names to a tuple of (index, barycentric coordinate) for
+        dict[str, dict[str, np.ndarray]]
+            A mapping of the dimension names to a dict with the arrays ``"index"`` and ``"bcoord"`` for
             the staggered grid the DataArray is defined on.
 
         Example
         -------
-        >>> position = {"X": (5, 0.51), "Y": (10, 0.25), "Z": (3, 0.75)}
+        >>> position = {
+        ...     "X": {"index": np.array([5]), "bcoord": np.array([0.51])},
+        ...     "Y": {"index": np.array([10]), "bcoord": np.array([0.25])},
+        ...     "Z": {"index": np.array([3]), "bcoord": np.array([0.75])},
+        ... }
         >>> dims = ["time", "depth", "YC", "XC"]
-        >>> grid.localize(position, dims)
-        {'depth': (3, 0.75), 'YC': (9, 0.75), 'XC': (5, 0.01)}
+        >>> grid.localise(position, dims)
+        {'depth': {'index': array([3]), 'bcoord': array([0.75])}, 'YC': {'index': array([9]), 'bcoord': array([0.75])}, 'XC': {'index': array([5]), 'bcoord': array([0.01])}}
         """
         dim_to_axis = _get_dim_to_axis_mapping(self.sgrid_metadata)
         axis_to_var = {dim_to_axis[dim]: dim for dim in dims if dim in dim_to_axis}
@@ -297,12 +301,13 @@ class XGrid(BaseGrid):
         }
         return {
             axis_to_var[axis]: _convert_center_pos_to_fpoint(
-                index=index,
-                bcoord=bcoord,
+                index=pos["index"],
+                bcoord=pos["bcoord"],
                 position=var_positions[axis],
                 f_point_position=self._fpoint_info[axis],
             )
-            for axis, (index, bcoord) in position.items()
+            for axis, pos in position.items()
+            if axis in axis_to_var
         }
 
     @property
@@ -591,29 +596,29 @@ def assert_valid_depth(da_depth):
 
 def _convert_center_pos_to_fpoint(
     *,
-    index: int,
-    bcoord: float,
+    index: np.ndarray,
+    bcoord: np.ndarray,
     position: ptyping.GridPosition,
     f_point_position: sgrid.Padding,
-) -> tuple[int, float]:
+) -> dict[str, np.ndarray]:
     """Converts a physical position relative to the cell edges defined in the grid to be relative to the face center.
 
-    This is used to "localize" a position to be relative to the staggered grid at which the field is defined, so that
+    This is used to "localise" a position to be relative to the staggered grid at which the field is defined, so that
     it can be easily interpolated.
 
     This also handles different model input cell edges and centers are staggered in different directions (e.g., with NEMO and MITgcm).
     """
     if position != "face":  # Data is already defined on the F nodes
-        return index, bcoord
+        return {"index": index, "bcoord": bcoord}
 
     bcoord = bcoord - 0.5
-    if bcoord < 0:
-        bcoord += 1.0
-        index -= 1
+    wrapped = bcoord < 0
+    bcoord = np.where(wrapped, bcoord + 1.0, bcoord)
+    index = np.where(wrapped, index - 1, index)
 
     # Correct relative to the f-point position
     # Padding.BOTH was "inner", Padding.LOW was "right" in xgcm vocabulary
     if f_point_position in (sgrid.Padding.BOTH, sgrid.Padding.LOW):
-        index += 1
+        index = index + 1
 
-    return index, bcoord
+    return {"index": index, "bcoord": bcoord}

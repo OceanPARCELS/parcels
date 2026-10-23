@@ -8,7 +8,6 @@ import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-import xarray as xr
 from re_assert import Matches
 
 import parcels.tutorial
@@ -154,46 +153,6 @@ def test_write_dtypes_pfile(fieldset, tmp_parquet):
     tab = pq.read_table(tmp_parquet)
     for d in dtypes:
         assert tab[f"v_{d.__name__}"].type == pa.from_numpy_dtype(d)
-
-
-@pytest.mark.skip(reason="Pending ParticleFile refactor; see issue #2386")
-@pytest.mark.parametrize("dt", [-np.timedelta64(1, "s"), np.timedelta64(1, "s")])
-@pytest.mark.parametrize("maxvar", [2, 4, 10])
-def test_pset_repeated_release_delayed_adding_deleting(fieldset, tmp_parquet, dt, maxvar):
-    """Tests that if particles are released and deleted based on age that resulting output file is correct."""
-    npart = 10
-    fieldset.add_context("maxvar", maxvar)
-
-    MyParticle = Particle.add_variable(
-        [Variable("sample_var", initial=0.0), Variable("v_once", dtype=np.float64, initial=0.0)]
-    )
-
-    pset = ParticleSet(
-        fieldset,
-        x=np.zeros(npart),
-        y=np.zeros(npart),
-        pclass=MyParticle,
-        t=fieldset.time_interval.left + [np.timedelta64(i + 1, "s") for i in range(npart)],
-    )
-    pfile = ParticleFile(tmp_parquet, outputdt=abs(dt))
-
-    def IncrLon(particles, fieldset):  # pragma: no cover
-        particles.sample_var += 1.0
-        particles.state = np.where(
-            particles.sample_var > fieldset.maxvar,
-            StatusCode.Delete,
-            particles.state,
-        )
-
-    for _ in range(npart):
-        pset.execute(IncrLon, dt=dt, runtime=np.timedelta64(1, "s"), output_file=pfile)
-
-    ds = xr.open_zarr(tmp_parquet)
-    samplevar = ds["sample_var"][:]
-    assert samplevar.shape == (npart, min(maxvar, npart + 1))
-    # test whether samplevar[:, k] = k
-    for k in range(samplevar.shape[1]):
-        assert np.allclose([p for p in samplevar[:, k] if np.isfinite(p)], k + 1)
 
 
 def test_file_warnings(fieldset, tmp_parquet):

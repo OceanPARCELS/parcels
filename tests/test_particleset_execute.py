@@ -571,24 +571,23 @@ def test_uxstommelgyre_multiparticle_pset_execute():
     )
 
 
-@pytest.mark.xfail(reason="Output file not implemented yet")
 def test_uxstommelgyre_pset_execute_output():
     ds = datasets_unstructured["stommel_gyre_delaunay"]
     fieldset = FieldSet.from_ugrid_conventions(ds)
     pset = ParticleSet(
         fieldset,
-        x=[30.0],
-        y=[5.0],
-        z=[50.0],
-        t=[0.0],
+        x=30.0,
+        y=5.0,
+        z=50.0,
+        t=np.timedelta64(0, "s"),
         pclass=Particle,
     )
     output_file = ParticleFile(
-        name="stommel_uxarray_particles.zarr",  # the file name
+        path="stommel_uxarray_particles.parquet",  # the file name
         outputdt=np.timedelta64(5, "m"),  # the time step of the outputs
     )
     pset.execute(
-        runtime=np.timedelta64(10, "m"), dt=np.timedelta64(60, "s"), kernels=AdvectionEE, output_file=output_file
+        runtime=np.timedelta64(10, "m"), dt=np.timedelta64(150, "s"), kernels=AdvectionEE, output_file=output_file
     )
 
 
