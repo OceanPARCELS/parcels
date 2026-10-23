@@ -91,6 +91,7 @@ gsw = "*"
 py-triangle = "*"
 cmocean = "*"
 cartopy = "*"
+xgcm = "*"
 
 [feature.devtools.dependencies]
 pdbpp = "*"

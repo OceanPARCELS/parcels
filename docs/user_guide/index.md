@@ -66,6 +66,7 @@ examples/tutorial_sigma_coordinates.ipynb
 examples/tutorial_velocityconversion.ipynb
 examples/tutorial_nestedgrids.ipynb
 examples/tutorial_manipulating_field_data.ipynb
+examples/tutorial_xgcm_derived_fields.ipynb
 ```
 
 ## Create ParticleSets
