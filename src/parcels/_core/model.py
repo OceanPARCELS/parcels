@@ -228,7 +228,7 @@ class StructuredModelData(ModelData):
         ds: xr.Dataset,
         *,
         mesh: ptyping.TMesh | None = None,
-        vector_fields: ptyping.VectorFields | NotSetType = NOTSET,
+        vector_fields: ptyping.VectorFields | NotSetType,
         skip_field_data_validation: bool = False,
     ) -> Self:
         ds = ds.copy()

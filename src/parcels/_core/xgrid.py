@@ -121,7 +121,7 @@ class XGrid(BaseGrid):
     """
 
     def __init__(self, model_data: xr.Dataset, mesh: ptyping.TMesh):
-        if not isinstance(mesh, BaseMesh):  # TODO should be captured by typing
+        if not isinstance(mesh, BaseMesh):
             raise TypeError(f"mesh must be a FlatMesh or SphericalMesh object. Got {mesh=!r}")
         self.sgrid_metadata = model_data.sgrid.metadata
         self._ds = model_data
