@@ -265,7 +265,7 @@ class FieldSet:
     def from_ugrid_conventions(
         cls,
         ds: ux.UxDataset,
-        mesh: ptyping.TMesh | None = None,
+        mesh: SphericalMesh | None = None,
         vector_fields: ptyping.VectorFields | NotSetType = NOTSET,
     ):
         """Create a FieldSet from a Parcels compliant uxarray.UxDataset.
@@ -306,7 +306,7 @@ class FieldSet:
     def from_sgrid_conventions(
         cls,
         ds: xr.Dataset,
-        mesh: ptyping.TMesh | None = None,
+        mesh: SphericalMesh | None = None,
         vector_fields: ptyping.VectorFields | NotSetType = NOTSET,
         skip_field_data_validation: bool = False,
     ):
