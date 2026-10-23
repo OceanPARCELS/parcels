@@ -17,6 +17,7 @@ from parcels._datasets.unstructured.generated import sigma_coordinate_lattice_da
 from parcels._datasets.unstructured.generic import datasets as datasets_unstructured
 from parcels.interpolators import (
     UxConstantFaceConstantZC,
+    UxLinearNodeConstantZC,
     UxLinearNodeLinearZF,
 )
 from tests.utils import create_uxgrid_from_triangulation
@@ -50,7 +51,6 @@ def test_fesom_fieldset(ds_fesom_channel, fieldset_fesom_channel):
     assert (fieldset_fesom_channel.V.data == ds_fesom_channel.V).all()
 
 
-@pytest.mark.xfail(reason="#2674 - 'p' interpolator is not being selected properly")
 def test_fesom2_square_delaunay_uniform_z_coordinate_eval():
     """
     Test the evaluation of a fieldset with a FESOM2 square Delaunay grid and uniform z-coordinate.
@@ -59,12 +59,12 @@ def test_fesom2_square_delaunay_uniform_z_coordinate_eval():
     """
     ds = datasets_unstructured["fesom2_square_delaunay_uniform_z_coordinate"]
     ds = convert.fesom_to_ugrid(ds)
-    fieldset = FieldSet.from_ugrid_conventions(ds)
+    fieldset = FieldSet.from_ugrid_conventions(ds, mesh=FlatMesh())
 
     assert isinstance(fieldset.U.interp_method, UxConstantFaceConstantZC)
     assert isinstance(fieldset.V.interp_method, UxConstantFaceConstantZC)
     assert isinstance(fieldset.W.interp_method, UxLinearNodeLinearZF)
-    assert isinstance(fieldset.p.interp_method, UxLinearNodeLinearZF)
+    assert isinstance(fieldset.p.interp_method, UxLinearNodeConstantZC)
 
     (u, v, w) = fieldset.UVW.eval(t=[0.0], z=[1.0], y=[30.0], x=[30.0])
     assert np.allclose([u.item(), v.item(), w.item()], [1.0, 1.0, 0.0], rtol=1e-3, atol=1e-6)
