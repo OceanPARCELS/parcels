@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tkinter import Pack
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -100,10 +101,10 @@ def _get_offsets_dictionary(grid: XGrid) -> dict[ptyping.CfAxisSpatial, Literal[
     offsets = {}
     metadata = grid.sgrid_metadata
     for fnp, axis in zip(metadata.face_dimensions, ["X", "Y"], strict=False):
-        offsets[axis] = 1 if fnp.padding == sgrid.Padding.LOW else 0
+        offsets[axis] = 1 if (fnp.padding == sgrid.Padding.LOW or fnp.padding == sgrid.Padding.BOTH) else 0
     if metadata.vertical_dimensions is not None:
         fnp_z = metadata.vertical_dimensions[0]
-        offsets["Z"] = 1 if fnp_z.padding == sgrid.Padding.LOW else 0
+        offsets["Z"] = 1 if (fnp_z.padding == sgrid.Padding.LOW or fnp_z.padding == sgrid.Padding.BOTH) else 0
     else:
         offsets["Z"] = 0
     return offsets
