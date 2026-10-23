@@ -421,7 +421,7 @@ Change <code>fieldset.gridset.grids[0]</code> to <code>fieldset.gridset[0]</code
 The <code>UnitConverter</code> class is removed
 </div>
 <div class="migration-bubble migration-how">
-Remove any <code>UnitConverter</code> usage from your code and Interpolation functions should handle unit conversion internally, based on the value of <code>grid.mesh</code> (<code>SphericalMesh()"</code> or <code>FlatMesh()</code>)
+Remove any <code>UnitConverter</code> usage from your code and Interpolation functions should handle unit conversion internally, based on the units of the coordinate values in the Dataset, or the value of <code>SphericalMesh(radius=...)"</code>.
 </div>
 <hr class="migration-divider" />
 
