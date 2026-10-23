@@ -7,10 +7,10 @@ import parcels._sgrid as sgrid
 from parcels._core.utils.time import timedelta_to_float
 
 
-def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh="spherical"):
-    max_lon = 180.0 if mesh == "spherical" else 1e6
-    max_lat = 90.0 if mesh == "spherical" else 1e6
-    unit = "degrees" if mesh == "spherical" else "m"
+def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh_str="spherical"):
+    max_lon = 180.0 if mesh_str == "spherical" else 1e6
+    max_lat = 90.0 if mesh_str == "spherical" else 1e6
+    unit = "degrees" if mesh_str == "spherical" else "m"
     shape = (n_times, nz, ny, nx)
 
     return xr.Dataset(
@@ -42,7 +42,7 @@ def simple_UV_dataset(n_times=360, nz=2, ny=30, nx=4, maxdepth=1, mesh="spherica
 
 
 def simple_UV_sigma_dataset(
-    n_times=360, nz=2, ny=30, nx=4, bottom_depth=None, eta=None, mesh="flat", start_time="2000-01-01"
+    n_times=360, nz=2, ny=30, nx=4, bottom_depth=None, eta=None, mesh_str="flat", start_time="2000-01-01"
 ):
     """simple_UV_dataset with zero U, V and W and a time-varying (4D) depth on the cell centres: nz sigma interfaces from the surface (depth -eta) to bottom_depth ((YC, XC) array, meters; None for a flat bottom at 1 m); eta is None or (time, YC, XC), hourly from start_time."""
     if bottom_depth is None:
@@ -62,7 +62,7 @@ def simple_UV_sigma_dataset(
         sigma[np.newaxis, :, np.newaxis, np.newaxis] * total_depth[:, np.newaxis] - eta[:, np.newaxis]
     )  # (time, ZF, YC, XC)
 
-    ds = simple_UV_dataset(n_times=n_times, nz=nz, ny=ny, nx=nx, mesh=mesh)
+    ds = simple_UV_dataset(n_times=n_times, nz=nz, ny=ny, nx=nx, mesh_str=mesh_str)
     # rename original depth coordinate to ZF to avoid confusion with 4D depth coordinate
     ds = ds.rename({"depth": "ZF"})
     ds["grid"].attrs["vertical_dimensions"] = "ZC:ZF (padding:both)"
@@ -237,7 +237,7 @@ def decaying_moving_eddy_dataset(xdim=2, ydim=2):
     )
 
 
-def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
+def peninsula_dataset(xdim=100, ydim=50, mesh_str="flat", grid_type="A"):
     """Construct a fieldset encapsulating the flow field around an idealised peninsula.
 
     Parameters
@@ -246,7 +246,7 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
         Horizontal dimension of the generated fieldset
     ydim :
         Vertical dimension of the generated fieldset
-    mesh : str
+    mesh_str : str
         String indicating the type of mesh coordinates and
         units used during velocity interpolation:
 
@@ -300,9 +300,9 @@ def peninsula_dataset(xdim=100, ydim=50, mesh="flat", grid_type="A"):
         raise ValueError(f"Grid_type {grid_type} is not a valid option")
 
     # Convert from m to lat/lon for spherical meshes
-    lon = La / 1852.0 / 60.0 if mesh == "spherical" else La
-    lat = Wa / 1852.0 / 60.0 if mesh == "spherical" else Wa
-    unit = "m" if mesh == "flat" else "degree"
+    lon = La / 1852.0 / 60.0 if mesh_str == "spherical" else La
+    lat = Wa / 1852.0 / 60.0 if mesh_str == "spherical" else Wa
+    unit = "m" if mesh_str == "flat" else "degree"
 
     return xr.Dataset(
         {

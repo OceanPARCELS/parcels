@@ -44,10 +44,10 @@ from tests.mark import ignore_kernel_warnings
 from tests.utils import DEFAULT_PARTICLES, assert_cftime_like_particlefile
 
 
-@pytest.mark.parametrize("mesh", ["spherical", "flat"])
-def test_advection_zonal(mesh, npart=10):
+@pytest.mark.parametrize("mesh_str", ["spherical", "flat"])
+def test_advection_zonal(mesh_str, npart=10):
     """Particles at high latitude move geographically faster due to the pole correction."""
-    ds = simple_UV_dataset(mesh=mesh)
+    ds = simple_UV_dataset(mesh_str=mesh_str)
     ds["U"].data[:] = 1.0
     fieldset = FieldSet.from_sgrid_conventions(ds)
 
@@ -58,7 +58,7 @@ def test_advection_zonal(mesh, npart=10):
     pset.execute(AdvectionRK4, runtime=runtime, dt=np.timedelta64(15, "m"))
 
     expected_dlon = runtime
-    if mesh == "spherical":
+    if mesh_str == "spherical":
         expected_dlon /= 1852 * 60 * np.cos(np.deg2rad(pset.y))
 
     np.testing.assert_allclose(pset.x - startlon, expected_dlon, atol=1e-5)
@@ -68,7 +68,7 @@ def test_advection_zonal(mesh, npart=10):
 def test_advection_zonal_with_particlefile(tmp_parquet):
     """Particles at high latitude move geographically faster due to the pole correction."""
     npart = 10
-    ds = simple_UV_dataset(mesh="flat")
+    ds = simple_UV_dataset(mesh_str="flat")
     ds["U"].data[:] = 1.0
     fieldset = FieldSet.from_sgrid_conventions(ds)
 
@@ -90,7 +90,7 @@ def periodicBC(particles, fieldset):
 
 @ignore_kernel_warnings
 def test_advection_zonal_periodic():
-    ds = simple_UV_dataset(n_times=2, nz=2, ny=2, nx=2, mesh="flat")
+    ds = simple_UV_dataset(n_times=2, nz=2, ny=2, nx=2, mesh_str="flat")
     ds["U"].data[:] = 0.1
     ds["lon"].data = np.array([0, 2])
     ds["lat"].data = np.array([0, 2])
@@ -115,10 +115,10 @@ def test_advection_zonal_periodic():
     np.testing.assert_allclose(pset.y, 0.5, atol=1e-5)
 
 
-@pytest.mark.parametrize("mesh", ["spherical", "flat"])
-def test_advection_meridional(mesh, npart=10):
+@pytest.mark.parametrize("mesh_str", ["spherical", "flat"])
+def test_advection_meridional(mesh_str, npart=10):
     """All particles move the same in meridional direction, regardless of latitude."""
-    ds = simple_UV_dataset(mesh=mesh)
+    ds = simple_UV_dataset(mesh_str=mesh_str)
     ds["V"].data[:] = 1.0
     fieldset = FieldSet.from_sgrid_conventions(ds)
 
@@ -129,17 +129,17 @@ def test_advection_meridional(mesh, npart=10):
     pset.execute(AdvectionRK4, runtime=runtime, dt=np.timedelta64(15, "m"))
 
     expected_dlat = runtime
-    if mesh == "spherical":
+    if mesh_str == "spherical":
         expected_dlat /= 1852 * 60
 
     np.testing.assert_allclose(pset.x, startlon, atol=1e-5)
     np.testing.assert_allclose(pset.y - startlat, expected_dlat, atol=1e-4)
 
 
-@pytest.mark.parametrize("mesh", ["spherical", "flat"])
-def test_horizontal_advection_in_3D_flow(mesh, npart=10):
+@pytest.mark.parametrize("mesh_str", ["spherical", "flat"])
+def test_horizontal_advection_in_3D_flow(mesh_str, npart=10):
     """2D zonal flow that increases linearly with z from 0 m/s to 1 m/s."""
-    ds = simple_UV_dataset(mesh=mesh)
+    ds = simple_UV_dataset(mesh_str=mesh_str)
     ds["U"].data[:] = 1.0
     ds["U"].data[:, 0, :, :] = 0.0  # Set U to 0 at the surface
     fieldset = FieldSet.from_sgrid_conventions(ds)
@@ -148,7 +148,7 @@ def test_horizontal_advection_in_3D_flow(mesh, npart=10):
     pset.execute(AdvectionRK4, runtime=np.timedelta64(2, "h"), dt=np.timedelta64(15, "m"))
 
     expected_lon = pset.z * pset.t
-    if mesh == "spherical":
+    if mesh_str == "spherical":
         expected_lon /= 1852 * 60 * np.cos(np.deg2rad(pset.y))
     np.testing.assert_allclose(pset.x, expected_lon, atol=1.0e-1)
 
@@ -156,7 +156,7 @@ def test_horizontal_advection_in_3D_flow(mesh, npart=10):
 @pytest.mark.parametrize("direction", ["up", "down"])
 @pytest.mark.parametrize("resubmerge_particle", [True, False])
 def test_advection_3D_outofbounds(direction, resubmerge_particle):
-    ds = simple_UV_dataset(mesh="flat")
+    ds = simple_UV_dataset(mesh_str="flat")
     ds["W"] = ds["V"].copy()  # Just to have W field present
     ds["U"].data[:] = 0.01  # Set U to small value (to avoid horizontal out of bounds)
     ds["W"].data[:] = -1.0 if direction == "up" else 1.0
@@ -242,7 +242,7 @@ def test_length1dimensions(u_value, x_slice, v_value, y_slice, w_value, z_slice)
 @pytest.mark.parametrize("integrator", [RK2, RK4])
 def test_advection_with_integrators_singlefield(npart, integrator):
     """Test that the RK2 and RK4 integrators don't work with a single field (e.g. U)"""
-    ds = simple_UV_dataset(mesh="flat").rename({"U": "T"})
+    ds = simple_UV_dataset(mesh_str="flat").rename({"U": "T"})
     fset = parcels.FieldSet.from_sgrid_conventions(ds)
 
     pset = parcels.ParticleSet(fset, x=np.zeros(npart), y=np.arange(npart))
@@ -422,17 +422,20 @@ def test_stommelgyre_fieldset(kernel, rtol, grid_type):
         (AdvectionRK45, 1e-3),
     ],
 )
-@pytest.mark.parametrize("mesh", ["flat", "spherical"])
+@pytest.mark.parametrize("mesh_str", ["flat", "spherical"])
 @pytest.mark.parametrize("grid_type", ["A", "C"])
-def test_peninsula_fieldset(kernel, rtol, grid_type, mesh):
+def test_peninsula_fieldset(kernel, rtol, grid_type, mesh_str):
     npart = 2
-    ds = peninsula_dataset(grid_type=grid_type)
+    ds = peninsula_dataset(grid_type=grid_type, mesh_str=mesh_str)
     fieldset = FieldSet.from_sgrid_conventions(ds)
 
     dt = np.timedelta64(30, "m")
     runtime = np.timedelta64(23, "h")
     start_lat = np.linspace(3e3, 47e3, npart)
     start_lon = 3e3 * np.ones_like(start_lat)
+    if mesh_str == "spherical":
+        start_lat = start_lat / 1852.0 / 60.0
+        start_lon = start_lon / 1852.0 / 60.0
 
     SampleParticle = DEFAULT_PARTICLES[kernel].add_variable(
         [Variable("p", initial=0.0, dtype=np.float32), Variable("p_start", initial=0.0, dtype=np.float32)]
@@ -539,7 +542,7 @@ def test_mitgcm():
 def test_advection_on_moving_sigma_grid_keeps_depth():
     """With uniform u and w = 0, particles keep their depth while the sigma levels move past them."""
     n_snapshots, nz, ny, nx = 3, 6, 5, 5
-    lon = simple_UV_dataset(n_times=n_snapshots, nz=nz, ny=ny, nx=nx, mesh="flat")["lon"].values
+    lon = simple_UV_dataset(n_times=n_snapshots, nz=nz, ny=ny, nx=nx, mesh_str="flat")["lon"].values
     x_centres = lon - 0.5 * (lon[1] - lon[0])  # LOW padding: cell centre i lies between nodes i - 1 and i
     bottom_depth = np.broadcast_to(20.0 + 5e-6 * x_centres, (ny, nx))
     eta = np.stack([np.broadcast_to(np.sin(snapshot + 1e-6 * x_centres), (ny, nx)) for snapshot in range(n_snapshots)])
