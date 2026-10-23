@@ -34,6 +34,8 @@ __all__ = [  # noqa: RUF022
     "Ux_Velocity",
     "UxConstantFaceConstantZC",
     "UxConstantFaceLinearZF",
+    "UxConstantEdgeConstantZC",
+    "UxConstantEdgeLinearZF",
     "UxLinearNodeConstantZC",
     "UxLinearNodeLinearZF",
 ]
