@@ -1,5 +1,7 @@
 from ._uxinterpolators import (
     Ux_Velocity,
+    UxConstantEdgeConstantZC,
+    UxConstantEdgeLinearZF,
     UxConstantFaceConstantZC,
     UxConstantFaceLinearZF,
     UxLinearNodeConstantZC,
@@ -32,6 +34,8 @@ __all__ = [  # noqa: RUF022
     "Ux_Velocity",
     "UxConstantFaceConstantZC",
     "UxConstantFaceLinearZF",
+    "UxConstantEdgeConstantZC",
+    "UxConstantEdgeLinearZF",
     "UxLinearNodeConstantZC",
     "UxLinearNodeLinearZF",
 ]
